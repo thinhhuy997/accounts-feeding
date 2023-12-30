@@ -18,14 +18,22 @@ import requests
 from facebook import SeleniumWorker
 import time
 from traodoisub import Traodoisub
+from PyQt5.QtGui import QPixmap
+from pathlib import Path
 
+class PasswordDelegate(QtWidgets.QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        style = option.widget.style() or QtWidgets.QApplication.style()
+        hint = style.styleHint(QtWidgets.QStyle.SH_LineEdit_PasswordCharacter)
+        option.text = chr(hint) * len(option.text)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
 
         # Size of the main window
-        MainWindow.resize(1590, 900)
+        MainWindow.resize(1690, 900)
 
 
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -91,12 +99,13 @@ class Ui_MainWindow(object):
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         # 3rd and 4th parameters use to set width and height of the Table Widget
-        self.tableWidget.setGeometry(QtCore.QRect(30, 130, 1529, 800))
+        self.tableWidget.setGeometry(QtCore.QRect(30, 130, 1616, 800))
 
 
         self.tableWidget.setObjectName("tableWidget")
 
-        self.tableWidget.setColumnCount(9)
+        # Set column count
+        self.tableWidget.setColumnCount(10)
 
         # self.tableWidget.setRowCount(2)
         item = QtWidgets.QTableWidgetItem()
@@ -122,7 +131,8 @@ class Ui_MainWindow(object):
         self.tableWidget.setHorizontalHeaderItem(7, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(8, item)
-
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(9, item)
 
         # set all column width
         # self.set_column_width()
@@ -143,20 +153,24 @@ class Ui_MainWindow(object):
         # Set specified width for column "Token"
         self.tableWidget.setColumnWidth(4, 200)
 
-        # Set specified width for column "Email"
-        self.tableWidget.setColumnWidth(5, 129)
+        # Set specified width for column "Profile status"
+        self.tableWidget.setColumnWidth(5, 95)
 
-        # Set specified width for column "Email_password"
+        # Set specified width for column "Email"
         self.tableWidget.setColumnWidth(6, 129)
 
+        # Set specified width for column "Email_password"
+        self.tableWidget.setColumnWidth(7, 129)
+
         # Set specified width for column "proxy"
-        self.tableWidget.setColumnWidth(7, 180)
+        self.tableWidget.setColumnWidth(8, 119)
 
         # Set specified width for column "status"
-        self.tableWidget.setColumnWidth(8, 250)
+        self.tableWidget.setColumnWidth(9, 326)
 
 
-        self.tableWidget.verticalHeader().setDefaultSectionSize(50)
+        # Set row height
+        self.tableWidget.verticalHeader().setDefaultSectionSize(30)
 
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(30, 90, 741, 16))
@@ -187,7 +201,7 @@ class Ui_MainWindow(object):
         self.saveProfiles.clicked.connect(self.save_profiles)
         
         
-        self.column_order = ["uid", "password", "fa_secret", "cookie", "token", "email", "email_passwprd", "proxy", "status"]
+        self.column_order = ["uid", "password", "fa_secret", "cookie", "token", "profile_status","email", "email_password", "proxy", "status"]
 
         self.accounts = []
         self.base_url = "https://traodoisub.com"
@@ -199,6 +213,10 @@ class Ui_MainWindow(object):
         # Set the maximum number of threads (workers)
         self.threadpool.setMaxThreadCount(4)
         print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
+
+        # New
+        self.check_mark_img = './images/check-mark-16.jpg'
+        self.x_mark_img = './images/x-mark-16.jpg'
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -223,14 +241,16 @@ class Ui_MainWindow(object):
         item = self.tableWidget.horizontalHeaderItem(4)
         item.setText(_translate("MainWindow", "Token"))
         item = self.tableWidget.horizontalHeaderItem(5)
-        item.setText(_translate("MainWindow", "Email"))
+        item.setText(_translate("MainWindow", "Profile Status"))
         item = self.tableWidget.horizontalHeaderItem(6)
+        item.setText(_translate("MainWindow", "Email"))
+        item = self.tableWidget.horizontalHeaderItem(7)
         item.setText(_translate("MainWindow", "Email_password"))
 
-        item = self.tableWidget.horizontalHeaderItem(7)
+        item = self.tableWidget.horizontalHeaderItem(8)
         item.setText(_translate("MainWindow", "proxy"))
 
-        item = self.tableWidget.horizontalHeaderItem(8)
+        item = self.tableWidget.horizontalHeaderItem(9)
         item.setText(_translate("MainWindow", "status"))
 
         __sortingEnabled = self.tableWidget.isSortingEnabled()
@@ -259,8 +279,6 @@ class Ui_MainWindow(object):
         elif self.accounts[selected_rows[0]]['proxy'] == '':
             self.show_error_dialog(err_msg='No proxy added yet!')
         else:
-            # Initialize a lock to ensure thread safety
-            thread_lock = threading.Lock()
 
             # Display the selected indices
             for row_i in selected_rows:
@@ -279,6 +297,7 @@ class Ui_MainWindow(object):
                 
                 facebook_worker.signals.result.connect(lambda result, row=row_i: self.display_result(result, row))
                 facebook_worker.signals.error.connect(lambda error, row=row_i: self.display_error(error, row))
+                facebook_worker.signals.profile_status.connect(lambda status, row=row_i: self.change_profile_status(status, row))
 
                 # Execute the worker in the thread pool
                 self.threadpool.start(facebook_worker)
@@ -355,12 +374,30 @@ class Ui_MainWindow(object):
         print('error:', error)
         self.changeCellValue(row, self.column_order.index('status'), newValue=f'{error}')
 
-    def changeCellValue(self, row, col, newValue):
-        # Create a new item with the desired value
-        new_item = QtWidgets.QTableWidgetItem(newValue)
+    def change_profile_status(self, status, row):
+        if status == 0:
+            self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
 
-        # Set the new item for the specified cell
-        self.tableWidget.setItem(row, col, new_item)
+    def changeCellValue(self, row, col, newValue):
+        # newValue == 0 or 1 is corresponding change profile_status column
+        if newValue == 0:
+            new_item = QtWidgets.QLabel()
+            pixmap = QPixmap(self.x_mark_img)
+            new_item.setPixmap(pixmap)
+            new_item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.tableWidget.setCellWidget(row, col, new_item)
+        elif newValue == 1:
+            new_item = QtWidgets.QLabel()
+            pixmap = QPixmap(self.check_mark_img)
+            new_item.setPixmap(pixmap)
+            new_item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.tableWidget.setCellWidget(row, col, new_item)
+        else:
+            # Create a new item with the desired value
+            new_item = QtWidgets.QTableWidgetItem(newValue)
+
+            # Set the new item for the specified cell
+            self.tableWidget.setItem(row, col, new_item)
 
 
     def add_row(self, row_index, data):
@@ -368,14 +405,29 @@ class Ui_MainWindow(object):
         for column_index, key in enumerate(self.column_order):
             value = data.get(key, "")
 
-            if key == "action":
-                button = QPushButton(f"Run")
-                button.clicked.connect(lambda state, row=row_index, col=column_index: self.on_run_button_clicked(row, col))
-                self.tableWidget.setCellWidget(row_index, column_index, button)
+            if key == "uid":
+                profile_id = value
+
+            if key == "profile_status":
+                # button = QPushButton(f"Run")
+                # button.clicked.connect(lambda state, row=row_index, col=column_index: self.on_run_button_clicked(row, col))
+                # self.tableWidget.setCellWidget(row_index, column_index, button)
+
+                profile_path = f"./user-profiles/{profile_id}"
+                if self.check_profiles_exists(profile_path=profile_path):
+                    item = QtWidgets.QLabel()
+                    pixmap = QPixmap(self.check_mark_img)
+                    item.setPixmap(pixmap)
+                    item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+                    self.tableWidget.setCellWidget(row_index, column_index, item)
             else:
                 item = QtWidgets.QTableWidgetItem()
                 item.setText(_translate("MainWindow", str(value)))
                 self.tableWidget.setItem(row_index, column_index, item)
+
+            
+
 
     def add_accounts_to_table(self, accounts):
         try:
@@ -388,6 +440,12 @@ class Ui_MainWindow(object):
             for row_index, account_data in enumerate(accounts):
                 self.add_row(row_index, account_data)
             self.tableWidget.setSortingEnabled(__sortingEnabled)
+
+            password_delegate = PasswordDelegate()
+
+            # Set format (*) for columns 'password' and 'email_password' 
+            self.tableWidget.setItemDelegateForColumn(self.column_order.index('password'), password_delegate)
+            self.tableWidget.setItemDelegateForColumn(self.column_order.index('email_password'), password_delegate)    
 
             print('Added accounts successfully!')
         except Exception as error:
@@ -434,7 +492,7 @@ class Ui_MainWindow(object):
                 "cookie": account_values[3],
                 "token": account_values[4],
                 "email": account_values[5],
-                "email_passwprd": account_values[6],
+                "email_password": account_values[6],
                 "proxy": '',
                 "status": '',
                 }
@@ -493,7 +551,15 @@ class Ui_MainWindow(object):
         except Exception as error:
             print(error)
         
+    def check_profiles_exists(self, profile_path):
+        profile_path = Path(profile_path)
 
+        if profile_path.exists() and profile_path.is_dir():
+            return True
+        
+        return False
+    
+    
     
 if __name__ == "__main__":
     import sys

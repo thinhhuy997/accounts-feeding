@@ -21,7 +21,8 @@ class WorkerSignals(QObject):
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
 
-    coins = pyqtSignal(object)
+    # new
+    profile_status = pyqtSignal(int)
 
 class SeleniumWorker(QRunnable):
     
@@ -42,22 +43,27 @@ class SeleniumWorker(QRunnable):
 
         self.traodoisub = Traodoisub(proxy=proxy)
 
-        self.driver = get_chromedriver(proxy=proxy, profile_id=profile_id)
+        self.profile_id = profile_id
+
+        # self.driver = get_chromedriver(proxy=proxy, profile_id=profile_id)
+
+        self.driver = None
 
 
     @pyqtSlot()
     def run(self):
         try:
-
+            
+            # if not self.driver:
+            self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
 
             # Perform some simple action (e.g., login facebook, get tds_cookie, etc...)
             self.login()
 
             # Simulate a delay (e.g., to simulate a time-consuming task)
-            time.sleep(2)
+            time.sleep(100)
 
             # self.driver.close()
-
 
 
         except Exception as e:
@@ -125,10 +131,12 @@ class SeleniumWorker(QRunnable):
 
         if "https://www.facebook.com/" == self.driver.current_url:
             self.signals.result.emit(f'Lưu profile thành công!')
+            self.signals.profile_status.emit(1)
             self.driver.quit()
             # Add additional checks if needed
         else:
             self.signals.result.emit(f'Lưu profile thất bại!')
+            self.signals.profile_status.emit(0)
             self.driver.quit()
             self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential['uid']}')
         

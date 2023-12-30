@@ -1,61 +1,41 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QItemSelectionModel
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 from PyQt5.QtCore import Qt
 
-class MyWidget(QWidget):
+class MyWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.initUI()
+        self.setWindowTitle("QTableWidget Horizontal Center Alignment")
+        self.setGeometry(100, 100, 600, 400)
 
-    def initUI(self):
-        # Create a table widget
-        self.tableWidget = QTableWidget(self)
-        self.tableWidget.setRowCount(5)
-        self.tableWidget.setColumnCount(3)
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
 
-        # Populate the table with some data
-        for row in range(5):
-            for col in range(3):
-                item = QTableWidgetItem(f"Row {row}, Col {col}")
-                self.tableWidget.setItem(row, col, item)
+        self.setup_ui()
 
-        # Create a button
-        self.button = QPushButton("Show Selected Indices", self)
-        self.button.clicked.connect(self.showSelectedIndices)
+    def setup_ui(self):
+        layout = QVBoxLayout(self.central_widget)
 
-        # Set up the layout
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.tableWidget)
-        layout.addWidget(self.button)
+        # Create QTableWidget
+        table_widget = QTableWidget(self)
+        table_widget.setColumnCount(3)
+        table_widget.setRowCount(5)
 
-        self.setLayout(layout)
+        # Set alignment for the second column to be horizontally centered
+        for row in range(table_widget.rowCount()):
+            item = QTableWidgetItem("Text in Row {}, Col 1".format(row))
+            item.setTextAlignment(Qt.AlignHCenter)
+            table_widget.setItem(row, 1, item)
 
-        # Connect to selection model's selectionChanged signal
-        selection_model = self.tableWidget.selectionModel()
-        selection_model.selectionChanged.connect(self.selectionChanged)
-
-    def selectionChanged(self, selected, deselected):
-        selected_rows = set(index.row() for index in selected.indexes())
-
-        # Check if entire rows are selected
-        if all(self.tableWidget.selectionModel().rowSpan(index.row()) == self.tableWidget.columnCount() for index in selected.indexes()):
-            print("Entire Rows Selected:", selected_rows)
-        else:
-            print("Partial Rows Selected")
-
-    def showSelectedIndices(self):
-        # Get selected items
-        selected_items = self.tableWidget.selectedItems()
-
-        # Extract row indices from selected items
-        selected_rows = set(item.row() for item in selected_items)
-
-        # Display the selected indices
-        print("Selected Indices:", selected_rows)
+        layout.addWidget(table_widget)
 
 
-if __name__ == '__main__':
-    app = QApplication([])
-    window = MyWidget()
+def main():
+    app = QApplication(sys.argv)
+    window = MyWindow()
     window.show()
-    app.exec_()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
