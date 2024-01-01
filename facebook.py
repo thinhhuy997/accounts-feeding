@@ -17,6 +17,7 @@ import shutil
 from traodoisub import Traodoisub
 
 class WorkerSignals(QObject):
+    started = pyqtSignal()
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
@@ -52,31 +53,28 @@ class SeleniumWorker(QRunnable):
 
     @pyqtSlot()
     def run(self):
+        self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
+        # self.driver = webdriver.Chrome()
+        self.signals.started.emit()
         try:
-            
-            # if not self.driver:
-            self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
-
             # Perform some simple action (e.g., login facebook, get tds_cookie, etc...)
             self.login()
 
             # Simulate a delay (e.g., to simulate a time-consuming task)
-            time.sleep(100)
+            time.sleep(2)
 
             # self.driver.close()
-
-
         except Exception as e:
             # Emit the error signal if an exception occurs
             tb_info = traceback.format_exc()
             self.signals.error.emit((type(e), e.args, tb_info))
 
-        # finally:
+        finally:
             # Close the WebDriver
-            # driver.quit()
+            self.driver.quit()
 
             # Emit the finished signal
-            # self.signals.finished.emit()
+            self.signals.finished.emit()
 
 
     def login(self):
@@ -138,9 +136,7 @@ class SeleniumWorker(QRunnable):
             self.signals.result.emit(f'Lưu profile thất bại!')
             self.signals.profile_status.emit(0)
             self.driver.quit()
-            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential['uid']}')
-        
-        
+            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
 
     def open_new_tab(self, url="/"):
         self.driver.execute_script(f"window.open('{url}');")

@@ -87,10 +87,10 @@ def get_chromedriver(proxy:dict, profile_id: str, *, user_agent=None):
     chrome_options.add_argument(f"user-data-dir={user_data_directory}") #Path to your chrome profile
     # w = webdriver.Chrome(chrome_options=options)
 
-    service = Service(executable_path='./chromedriver.exe')
+    # service = Service(executable_path='./chromedriver.exe')
     
     driver = webdriver.Chrome(
         # os.path.join(path, 'chromedriver'),
-        service=service,
+        # service=service,
         options=chrome_options)
     return driver

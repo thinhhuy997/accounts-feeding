@@ -29,6 +29,30 @@ class PasswordDelegate(QtWidgets.QStyledItemDelegate):
         option.text = chr(hint) * len(option.text)
 
 class Ui_MainWindow(object):
+
+    def __init__(self):
+        self.column_order = ["uid", "password", "fa_secret", "cookie", "token", "profile_status","email", "email_password", "proxy", "status"]
+
+        self.accounts = []
+        self.base_url = "https://traodoisub.com"
+
+        # New
+        # self.threadpool = QThreadPool()
+        self.threadpool = QThreadPool()
+        # Set the maximum number of threads (workers)
+        self.threadpool.setMaxThreadCount(4)
+        print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
+
+        # New
+        self.check_mark_img = './images/check-mark-16.jpg'
+        self.x_mark_img = './images/x-mark-16.jpg'
+
+        # New - 1/1/2024
+        self.selected_rows_count = 0
+        self.running_threads = 0
+        self.waiting_threads = 0
+        self.completed_threads = 0
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
 
@@ -99,7 +123,7 @@ class Ui_MainWindow(object):
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         # 3rd and 4th parameters use to set width and height of the Table Widget
-        self.tableWidget.setGeometry(QtCore.QRect(30, 130, 1616, 800))
+        self.tableWidget.setGeometry(QtCore.QRect(30, 130, 1616, 639))
 
 
         self.tableWidget.setObjectName("tableWidget")
@@ -172,9 +196,30 @@ class Ui_MainWindow(object):
         # Set row height
         self.tableWidget.verticalHeader().setDefaultSectionSize(30)
 
+        # Label "File:""
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(30, 90, 741, 16))
         self.label.setObjectName("label")
+
+        # Label "Total selected rows:"
+        self.totalSelectedRows = QtWidgets.QLabel(self.centralwidget)
+        self.totalSelectedRows.setGeometry(QtCore.QRect(30, 779, 741, 16))
+        self.totalSelectedRows.setObjectName("totalSelectedRows")
+
+        # Label "Total selected rows:"
+        self.totalRunningRows = QtWidgets.QLabel(self.centralwidget)
+        self.totalRunningRows.setGeometry(QtCore.QRect(30, 799, 741, 16))
+        self.totalRunningRows.setObjectName("totalRunningRows")
+
+        # Label "Total selected rows:"
+        self.totalWaitingRows = QtWidgets.QLabel(self.centralwidget)
+        self.totalWaitingRows.setGeometry(QtCore.QRect(30, 819, 741, 16))
+        self.totalWaitingRows.setObjectName("totalWaitingRows")
+
+        # Label "Total selected rows:"
+        self.totalCompletedRows = QtWidgets.QLabel(self.centralwidget)
+        self.totalCompletedRows.setGeometry(QtCore.QRect(30, 839, 741, 16))
+        self.totalCompletedRows.setObjectName("totalCompletedRows")
 
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -201,22 +246,7 @@ class Ui_MainWindow(object):
         self.saveProfiles.clicked.connect(self.save_profiles)
         
         
-        self.column_order = ["uid", "password", "fa_secret", "cookie", "token", "profile_status","email", "email_password", "proxy", "status"]
 
-        self.accounts = []
-        self.base_url = "https://traodoisub.com"
-
-
-        # New
-        # self.threadpool = QThreadPool()
-        self.threadpool = QThreadPool()
-        # Set the maximum number of threads (workers)
-        self.threadpool.setMaxThreadCount(4)
-        print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
-
-        # New
-        self.check_mark_img = './images/check-mark-16.jpg'
-        self.x_mark_img = './images/x-mark-16.jpg'
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -258,6 +288,24 @@ class Ui_MainWindow(object):
 
         self.label.setText(_translate("MainWindow", "File:"))
 
+        # NEW
+        self.totalSelectedRows.setText(_translate("MainWindow", f"(*) Selected accounts: {self.selected_rows_count}"))
+        self.totalRunningRows.setText(_translate("MainWindow", f"Running accounts: {self.running_threads}"))
+        self.totalWaitingRows.setText(_translate("MainWindow", f"Waiting accounts: {self.waiting_threads}"))
+        self.totalCompletedRows.setText(_translate("MainWindow", f"Completed accounts: {self.completed_threads}"))
+
+        self.tableWidget.itemSelectionChanged.connect(self.updateSelectedRows)
+
+    def updateSelectedRows(self):
+        # Get the list of selected rows
+        self.selected_rows = set()
+        for item in self.tableWidget.selectionModel().selectedRows():
+            self.selected_rows.add(item.row())
+
+        # Update the label with the total number of selected rows
+        self.selected_rows_count = len(self.selected_rows)
+        self.totalSelectedRows.setText(f'(*) Selected accounts: {len(self.selected_rows)}')
+
     def show_error_dialog(self, err_msg):
         # Create an error message box
         error_dialog = QMessageBox(self.centralwidget)
@@ -274,11 +322,15 @@ class Ui_MainWindow(object):
         selected_rows = set(index.row() for index in self.tableWidget.selectionModel().selectedRows())
         selected_rows = list(selected_rows)
 
+        
+
         if len(selected_rows) == 0:
             self.show_error_dialog(err_msg='No rows have been selected yet!')
         elif self.accounts[selected_rows[0]]['proxy'] == '':
             self.show_error_dialog(err_msg='No proxy added yet!')
         else:
+
+            
 
             # Display the selected indices
             for row_i in selected_rows:
@@ -295,6 +347,16 @@ class Ui_MainWindow(object):
                                             proxy=proxy, profile_id=self.accounts[row_i]['uid']
                                             )
                 
+                '''
+                1/1/2024 -
+                Connect signals.started and signals.finished 
+                to the thread_start and thread_finished functions 
+                to update the running_threads, waiting_threads 
+                and completed_threads counters
+                '''
+                facebook_worker.signals.started.connect(self.thread_started)
+                facebook_worker.signals.finished.connect(self.thread_finished)
+                
                 facebook_worker.signals.result.connect(lambda result, row=row_i: self.display_result(result, row))
                 facebook_worker.signals.error.connect(lambda error, row=row_i: self.display_error(error, row))
                 facebook_worker.signals.profile_status.connect(lambda status, row=row_i: self.change_profile_status(status, row))
@@ -302,8 +364,37 @@ class Ui_MainWindow(object):
                 # Execute the worker in the thread pool
                 self.threadpool.start(facebook_worker)
 
+            
+    def thread_started(self):
+        self.running_threads += 1
+        self.update_labels()
 
-                
+    def thread_finished(self):
+        self.running_threads -= 1
+        self.completed_threads += 1
+        self.update_labels()        
+
+    def update_labels(self):
+        # running_threads = self.threadpool.activeThreadCount()
+        # self.waiting_threads = self.threadpool.reserveThread() # Consider using QThreadPool::reserveThread() for waiting count
+
+        running_threads = self.running_threads
+        waiting_threads = self.selected_rows_count - (self.running_threads + self.completed_threads)
+        completed_threads = self.completed_threads
+
+        
+        # for thread in self.threadpool.children():
+        #     if thread.isRunning():
+        #         running_threads += 1
+        #     elif thread.isFinished():
+        #         completed_threads += 1
+        #     else:
+        #         waiting_threads += 1    
+
+        self.totalRunningRows.setText(f"Running accounts: {running_threads}")
+        self.totalWaitingRows.setText(f"Waiting accounts: {waiting_threads}")
+        self.totalCompletedRows.setText(f"Completed accounts: {completed_threads}")
+
             
     def showContextMenu(self, pos):
         selected_rows = set(index.row() for index in self.tableWidget.selectionModel().selectedRows())
