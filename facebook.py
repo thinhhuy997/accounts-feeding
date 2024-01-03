@@ -78,7 +78,7 @@ class SeleniumWorker(QRunnable):
 
             self.login_by_cookie(cookie_str = self.cookie_str)
 
-            time.sleep(100)
+            time.sleep(10)
 
         except Exception as e:
             time.sleep(30)
@@ -103,12 +103,34 @@ class SeleniumWorker(QRunnable):
 
         cookies = {k: v.value for k, v in cookie.items()}
 
-        print(cookies)
+        self.driver.get("https://www.facebook.com")
 
-        # self.driver.add_cookie(cookies)
+        self.signals.result.emit(f"{cookies}")
 
-        # self.driver.get("https://www.facebook.com")
+        for key, value in cookies.items():
+            cookie = {'name': key, 'value': value}
+            self.driver.add_cookie(cookie)
 
+        
+
+        time.sleep(2.5)
+
+        self.driver.refresh()
+
+        # self.check_success_login()
+
+    
+    def check_success_login(self):
+        if "https://www.facebook.com/" == self.driver.current_url:
+
+            aria_1 = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Facebook']")))
+
+        
+
+            self.signals.result.emit(f'aria_1: {aria_1}')
+
+        # else:
+        #     return False
 
     def login(self):
         try:
@@ -164,7 +186,7 @@ class SeleniumWorker(QRunnable):
         if "https://www.facebook.com/" == self.driver.current_url:
 
             # save new login if login successfully!
-            self.save_cookie()
+            self.save_cookie(file_name="fb_cookie.txt")
             
             self.signals.result.emit(f'Lưu profile thành công!')
             self.signals.profile_status.emit(1)
@@ -364,7 +386,7 @@ class SeleniumWorker(QRunnable):
         except Exception as error:
             print(error)
 
-    def save_cookie(self):
+    def save_cookie(self, file_name):
         cookies = self.driver.get_cookies()
 
         fb_cookie_str = ""
@@ -375,12 +397,12 @@ class SeleniumWorker(QRunnable):
         self.signals.cookie.emit(fb_cookie_str)
 
         
-        # if file_name:
-        #     with open(file_name, 'w') as file:
-        #         # Write fb_cookie_str to the file
-        #         file.write(fb_cookie_str)
+        if file_name:
+            with open(file_name, 'w') as file:
+                # Write fb_cookie_str to the file
+                file.write(fb_cookie_str)
 
-        #     print('Wrote facebook cookie successfully!')
+            self.signals.result.emit('Wrote facebook cookie successfully!')
 
     def remove_chrome_profile(self, user_data_directory):
         time.sleep(2)

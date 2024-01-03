@@ -1,5 +1,0 @@
-[9604:2084:0103/175035.948:WARNING:chrome_main_delegate.cc(667)] This is Chrome version 120.0.6099.130 (not a warning)
-[9604:2084:0103/175036.010:INFO:policy_logger.cc(144)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(168) Starting CBCM Controller Initialization
-[9604:2084:0103/175036.010:INFO:policy_logger.cc(144)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(196) No machine level policy manager exists.
-[9604:2084:0103/175213.981:ERROR:CONSOLE(0)] "ReferenceError: dragEvent is not defined", source:  (0)
-[9604:2084:0103/175216.533:WARNING:pref_notifier_impl.cc(41)] Pref observer for media_router.cast_allow_all_ips found at shutdown.

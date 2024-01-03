@@ -649,7 +649,7 @@ class Ui_MainWindow(object):
     def add_proxies_from_file(self):
         try:
             if self.tableWidget.rowCount() == 0:
-                print("You must add accounts first")
+                self.show_error_dialog(err_msg="Bạn phải thêm accounts trước!")
             else:
                 # Open file Dialog
                 file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt)")
