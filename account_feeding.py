@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout
 from PyQt5.QtCore import QFile, QTextStream, QThreadPool
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
@@ -20,6 +20,7 @@ import time
 from traodoisub import Traodoisub
 from PyQt5.QtGui import QPixmap
 from pathlib import Path
+import json
 
 class PasswordDelegate(QtWidgets.QStyledItemDelegate):
     def initStyleOption(self, option, index):
@@ -52,6 +53,16 @@ class Ui_MainWindow(object):
         self.running_threads = 0
         self.waiting_threads = 0
         self.completed_threads = 0
+
+        # self.config_days_format = {
+        #     'day_1': 'Day 1',
+        #     'day_2': 'Day 2',
+        #     'day_3': 'Day 3',
+        #     'day_4': 'Day 4',
+        #     'day_5': 'Day 5',
+        #     'day_6': 'Day 6',
+        #     'day_7': 'Day 7'
+        # }
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -105,6 +116,10 @@ class Ui_MainWindow(object):
         self.addProxyButton.setFont(font)
         self.addProxyButton.setObjectName("addProxyButton")
 
+
+
+        
+
         # NEW
         self.saveProfiles = QtWidgets.QPushButton(self.frame)
         self.saveProfiles.setGeometry(QtCore.QRect(240, 20, 101, 31))
@@ -116,7 +131,7 @@ class Ui_MainWindow(object):
         self.feedAccounts.setGeometry(QtCore.QRect(460, 20, 101, 31))
         self.feedAccounts.setObjectName("feedAccounts")
         self.configDays = QtWidgets.QComboBox(self.frame)
-        self.configDays.setGeometry(QtCore.QRect(570, 25, 51, 21))
+        self.configDays.setGeometry(QtCore.QRect(570, 25, 68, 21))
         self.configDays.setObjectName("configDays")
         self.configDays.addItem("")
         self.configDays.addItem("")
@@ -244,6 +259,12 @@ class Ui_MainWindow(object):
         self.addAccountButton.clicked.connect(self.add_accounts_from_file)
         self.addProxyButton.clicked.connect(self.add_proxies_from_file)
         self.saveProfiles.clicked.connect(self.save_profiles)
+        self.importConfig.clicked.connect(self.import_config_from_file)
+        self.feedAccounts.clicked.connect(self.feed_accounts)
+
+
+
+
         
         
 
@@ -257,8 +278,8 @@ class Ui_MainWindow(object):
         self.saveProfiles.setText(_translate("MainWindow", "Save Profiles"))
         self.importConfig.setText(_translate("MainWindow", "Import config"))
         self.feedAccounts.setText(_translate("MainWindow", "Feed accounts"))
-        self.configDays.setItemText(0, _translate("MainWindow", "Day 1"))
-        self.configDays.setItemText(1, _translate("MainWindow", "Day 2"))
+        # self.configDays.setItemText(0, _translate("MainWindow", "Day 1"))
+        # self.configDays.setItemText(1, _translate("MainWindow", "Day 2"))
 
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("MainWindow", "UID"))
@@ -296,15 +317,36 @@ class Ui_MainWindow(object):
 
         self.tableWidget.itemSelectionChanged.connect(self.updateSelectedRows)
 
-    def updateSelectedRows(self):
-        # Get the list of selected rows
-        self.selected_rows = set()
-        for item in self.tableWidget.selectionModel().selectedRows():
-            self.selected_rows.add(item.row())
+    def open_dialog(self):
+        dialog = QDialog()
+        # Create layout
+        layout = QVBoxLayout(self.centralwidget)
 
-        # Update the label with the total number of selected rows
-        self.selected_rows_count = len(self.selected_rows)
-        self.totalSelectedRows.setText(f'(*) Selected accounts: {len(self.selected_rows)}')
+        # Create buttons
+        button1 = QPushButton('Use Cookie', self.frame)
+        button1.clicked.connect(self.save_profile_by_cookie)
+
+        button2 = QPushButton('Use Profile', self.frame)
+        button2.clicked.connect(self.save_profile_by_credentials)
+
+        # Add buttons to layout
+        layout.addWidget(button1)
+        layout.addWidget(button2)
+
+        dialog.setLayout(layout)
+
+        button_pos = self.saveProfiles.pos()
+
+        # Adjust the position of the dialog
+        dialog.move(button_pos.x() + 145, button_pos.y() + 115)
+
+        dialog.exec_()
+
+    def save_profile_by_cookie(self):
+        print('Save profile by cookie...')
+
+    def save_profile_by_credentials(self):
+        print('Save profile by user-pass...')
 
     def show_error_dialog(self, err_msg):
         # Create an error message box
@@ -316,6 +358,19 @@ class Ui_MainWindow(object):
 
         # Show the error dialog
         error_dialog.exec_()
+
+
+
+    def updateSelectedRows(self):
+        # Get the list of selected rows
+        self.selected_rows = set()
+        for item in self.tableWidget.selectionModel().selectedRows():
+            self.selected_rows.add(item.row())
+
+        # Update the label with the total number of selected rows
+        self.selected_rows_count = len(self.selected_rows)
+        self.totalSelectedRows.setText(f'(*) Selected accounts: {len(self.selected_rows)}')
+
 
     def save_profiles(self):
         # Get selected items
@@ -330,8 +385,6 @@ class Ui_MainWindow(object):
             self.show_error_dialog(err_msg='No proxy added yet!')
         else:
 
-            
-
             # Display the selected indices
             for row_i in selected_rows:
 
@@ -344,6 +397,7 @@ class Ui_MainWindow(object):
                 proxy = self.split_proxies(self.accounts[row_i]['proxy'])
 
                 facebook_worker = SeleniumWorker(facebook_login_credential=facebook_login_credential,
+                                                 cookie_str=self.accounts[row_i]['cookie'],
                                             proxy=proxy, profile_id=self.accounts[row_i]['uid']
                                             )
                 
@@ -360,6 +414,7 @@ class Ui_MainWindow(object):
                 facebook_worker.signals.result.connect(lambda result, row=row_i: self.display_result(result, row))
                 facebook_worker.signals.error.connect(lambda error, row=row_i: self.display_error(error, row))
                 facebook_worker.signals.profile_status.connect(lambda status, row=row_i: self.change_profile_status(status, row))
+                facebook_worker.signals.cookie.connect(lambda cookie, row=row_i: self.change_cookie(cookie, row))
 
                 # Execute the worker in the thread pool
                 self.threadpool.start(facebook_worker)
@@ -375,21 +430,9 @@ class Ui_MainWindow(object):
         self.update_labels()        
 
     def update_labels(self):
-        # running_threads = self.threadpool.activeThreadCount()
-        # self.waiting_threads = self.threadpool.reserveThread() # Consider using QThreadPool::reserveThread() for waiting count
-
         running_threads = self.running_threads
         waiting_threads = self.selected_rows_count - (self.running_threads + self.completed_threads)
         completed_threads = self.completed_threads
-
-        
-        # for thread in self.threadpool.children():
-        #     if thread.isRunning():
-        #         running_threads += 1
-        #     elif thread.isFinished():
-        #         completed_threads += 1
-        #     else:
-        #         waiting_threads += 1    
 
         self.totalRunningRows.setText(f"Running accounts: {running_threads}")
         self.totalWaitingRows.setText(f"Waiting accounts: {waiting_threads}")
@@ -469,6 +512,9 @@ class Ui_MainWindow(object):
         if status == 0:
             self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
 
+    def change_cookie(self, cookie, row):
+        self.changeCellValue(row, self.column_order.index('cookie'), newValue=f'{cookie}')
+
     def changeCellValue(self, row, col, newValue):
         # newValue == 0 or 1 is corresponding change profile_status column
         if newValue == 0:
@@ -543,31 +589,34 @@ class Ui_MainWindow(object):
             print(error)
 
     def add_accounts_from_file(self):
-        # Open file Dialog
-        file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt)")
-        
-        # Read file and import to data table
-        if file_name:
-            self.label.setText(str(file_name))
+        try:
+            # Open file Dialog
+            file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt)")
+            
+            # Read file and import to data table
+            if file_name:
+                self.label.setText(str(file_name))
 
-            file = QFile(file_name)
+                file = QFile(file_name)
 
-            if file.open(QFile.ReadOnly | QFile.Text):
-                stream = QTextStream(file)
-                facebook_accounts_content = stream.readAll()
-                # remove first and last space
-                facebook_accounts_content = facebook_accounts_content.strip()
+                if file.open(QFile.ReadOnly | QFile.Text):
+                    stream = QTextStream(file)
+                    facebook_accounts_content = stream.readAll()
+                    # remove first and last space
+                    facebook_accounts_content = facebook_accounts_content.strip()
 
-                account_lines = facebook_accounts_content.split('\n')
+                    account_lines = facebook_accounts_content.split('\n')
 
-                accounts = self.file_preprocessing(account_lines)
+                    accounts = self.file_preprocessing(account_lines)
 
-                # Add data to the data table
-                self.add_accounts_to_table(accounts)
-                
-                file.close()
-            else:
-                print(f"Error opening file: {file.errorString()}")
+                    # Add data to the data table
+                    self.add_accounts_to_table(accounts)
+                    
+                    file.close()
+                else:
+                    print(f"Error opening file: {file.errorString()}")
+        except Exception as error:
+            print(error)
 
     def file_preprocessing(self, account_lines: list):
         self.accounts = []
@@ -580,13 +629,14 @@ class Ui_MainWindow(object):
                 "uid": account_values[0], 
                 "password": account_values[1],
                 "fa_secret": account_values[2],
-                "cookie": account_values[3],
-                "token": account_values[4],
-                "email": account_values[5],
-                "email_password": account_values[6],
+                "cookie": account_values[5],
+                "token": account_values[6],
+                "email": account_values[3],
+                "email_password": account_values[4],
                 "proxy": '',
                 "status": '',
                 }
+            
             self.accounts.append(account_obj)
         return self.accounts
     
@@ -641,6 +691,38 @@ class Ui_MainWindow(object):
                         print(f"Error opening file: {file.errorString()}")
         except Exception as error:
             print(error)
+
+    def import_config_from_file(self):
+        try:
+            # Open file Dialog
+            file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt)")
+            
+            # Read file and import to data table
+            if file_name:
+
+                file = QFile(file_name)
+
+                if file.open(QFile.ReadOnly | QFile.Text):
+                    stream = QTextStream(file)
+                    config_json_content = stream.readAll()
+                    parsed_config_json = json.loads(config_json_content)
+
+                    self.update_config_days(config_json=parsed_config_json)
+                    
+                    file.close()
+                else:
+                    print(f"Error opening file: {file.errorString()}")
+        except Exception as error:
+            print(error)
+
+
+    def update_config_days(self, config_json):
+        i = 0
+
+        for key in config_json.keys():
+            self.configDays.setItemText(i, key)
+            i+=1
+        
         
     def check_profiles_exists(self, profile_path):
         profile_path = Path(profile_path)
@@ -650,6 +732,16 @@ class Ui_MainWindow(object):
         
         return False
     
+
+    
+    def feed_accounts(self):
+        selected_config_day = self.configDays.currentText()
+
+
+        if len(selected_config_day) == 0:
+            self.show_error_dialog(err_msg="You have not added the config yet!")
+        else:
+            print('config_day:', selected_config_day)
     
     
 if __name__ == "__main__":
