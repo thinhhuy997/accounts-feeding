@@ -2,6 +2,7 @@ import os
 import zipfile
 from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
+from pathlib import Path
 
 PROXY_PASS = 'proxy-password' # password
 def init_proxy_config(PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS):
@@ -81,10 +82,11 @@ def get_chromedriver(proxy:dict, profile_id: str, *, user_agent=None):
     # block show notifications from websites
     chrome_options.add_argument('--disable-notifications')  
 
-    user_data_directory = "C:/Users/Thinh/Desktop/pyqt5-project/accounts-feeding/user-profiles/"+profile_id
+    user_data_directory = rf"{Path.cwd()}\user-profiles\{profile_id}"
     # user_data_directory = "./user-profiles/"+profile_id
 
     chrome_options.add_argument(f"user-data-dir={user_data_directory}") #Path to your chrome profile
+
     # w = webdriver.Chrome(chrome_options=options)
 
     # service = Service(executable_path='./chromedriver.exe')

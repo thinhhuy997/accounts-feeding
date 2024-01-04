@@ -41,7 +41,7 @@ class SeleniumWorker(QRunnable):
 
     # actions list will be like this: {'type': 'like', 'jobs': ['url_1', 'url_2', ...]}
 
-    def __init__(self, facebook_login_credential: dict, cookie_str: str, proxy: dict, profile_id: str):
+    def __init__(self, facebook_login_credential: dict, cookie_str: str, proxy: dict, profile_id: str, tasks: list):
         super(SeleniumWorker, self).__init__()
 
         # new
@@ -62,27 +62,24 @@ class SeleniumWorker(QRunnable):
 
         self.driver = None
 
-        self.action_type = 'run'
-
-    def set_action(self, action_type):
-         self.action_type = action_type
+        self.tasks = tasks
 
     @pyqtSlot()
     def run(self):
 
-        if self.action_type == 'run':
+        if 'generate_profile' in self.tasks:
             self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
             # self.driver = webdriver.Chrome()
             self.signals.started.emit()
             try:
 
                 # Perform some simple action (e.g., login facebook, get tds_cookie, etc...
-                self.login()
+                self.generate_profile()
 
                 time.sleep(10)
 
             except Exception as e:
-                time.sleep(30)
+                time.sleep(5)
                 # Emit the error signal if an exception occurs
                 tb_info = traceback.format_exc()
                 self.signals.error.emit((type(e), e.args, tb_info))
@@ -94,11 +91,11 @@ class SeleniumWorker(QRunnable):
                 # Emit the finished signal
                 self.signals.finished.emit()
 
-        if self.action_type == 'create_profile':
-            pass
+        if 'test_profile' in self.tasks:
+            self.test_profile()
 
     
-    def login(self):
+    def generate_profile(self):
         cookie_login_check = self.login_by_cookie(cookie_str = self.cookie_str)
 
         if cookie_login_check:
@@ -226,7 +223,7 @@ class SeleniumWorker(QRunnable):
         if "https://www.facebook.com/" == self.driver.current_url:
 
             try:
-                ele = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Facebook']")))
+                ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Facebook']")))
 
                 if ele:
                     return True
@@ -236,6 +233,29 @@ class SeleniumWorker(QRunnable):
                 return False
 
         return False
+
+    def test_profile(self):
+
+        try:
+            self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
+
+            self.driver.get('https://www.facebook.com')
+
+            if self.check_success_login():
+                self.signals.result.emit(f'Profile vẫn sống khỏe!')
+            else:
+                self.signals.result.emit(f'Profile lỗi rồi, đã xóa profile!')
+                self.signals.profile_status.emit(0)
+                self.driver.quit()
+                self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
+
+            time.sleep(100)
+
+        except Exception as e:
+            # Emit the error signal if an exception occurs
+            tb_info = traceback.format_exc()
+            self.signals.error.emit((type(e), e.args, tb_info))
+
 
     def open_new_tab(self, url="/"):
         self.driver.execute_script(f"window.open('{url}');")
@@ -393,8 +413,10 @@ class SeleniumWorker(QRunnable):
             # Sleep time between jobs
             time.sleep(delay)
 
-        except Exception as error:
-            self.signals.error.emit(error)
+        except Exception as e:
+            # Emit the error signal if an exception occurs
+            tb_info = traceback.format_exc()
+            self.signals.error.emit((type(e), e.args, tb_info))
 
     def watch_livestream_and_interact(self, url='', like=False, comment=False, delay=2):
         time.sleep(delay)

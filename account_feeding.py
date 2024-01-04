@@ -18,6 +18,7 @@ import requests
 from facebook import SeleniumWorker
 import time
 from traodoisub import Traodoisub
+import traceback
 from PyQt5.QtGui import QPixmap
 from pathlib import Path
 import json
@@ -411,8 +412,10 @@ class Ui_MainWindow(object):
                 facebook_worker = SeleniumWorker(
                                                 facebook_login_credential=facebook_login_credential,
                                                 cookie_str=self.accounts[row_i]['cookie'],
-                                                proxy=proxy, profile_id=self.accounts[row_i]['uid']
+                                                proxy=proxy, profile_id=self.accounts[row_i]['uid'],
+                                                tasks=['generate_profile']
                                                 )
+
                 '''
                 1/1/2024 -
                 Connect signals.started and signals.finished 
@@ -485,23 +488,43 @@ class Ui_MainWindow(object):
         # print(f"Login and save profile for rows {', '.join(map(str, selected_rows))}")
         row_index = list(selected_rows)[0]
         try:
+            if len(self.accounts[row_index]['proxy']) == 0:
+                return self.show_error_dialog(err_msg='Cần thêm proxy để test profile!')
+
             proxy = self.split_proxies(self.accounts[row_index]['proxy'])
 
             profile_id = self.accounts[row_index]['uid']
 
-            print('profile_id:', profile_id)
+            cookie = self.accounts[row_index]['cookie']
 
-            if len(proxy) == 0:
-                return self.show_error_dialog(err_msg='Cần thêm proxy để test profile!')
+            facebook_login_credential = {
+                    "uid": self.accounts[row_index]["uid"],
+                    "password": self.accounts[row_index]["password"],
+                    "fa_secret": self.accounts[row_index]["fa_secret"],
+                }
 
-            driver = get_chromedriver(proxy=proxy, profile_id=profile_id)
 
-            driver.get('https://www.facebook.com')
+            facebook_worker = SeleniumWorker(
+                                            facebook_login_credential=facebook_login_credential,
+                                            cookie_str=cookie,
+                                            proxy=proxy, profile_id=profile_id,
+                                            tasks=['test_profile']
+                                            )
 
-            time.sleep(200)
+            facebook_worker.signals.started.connect(self.thread_started)
+            facebook_worker.signals.finished.connect(self.thread_finished)
+            
+            facebook_worker.signals.result.connect(lambda result, row=row_index: self.display_result(result, row))
+            facebook_worker.signals.error.connect(lambda error, row=row_index: self.display_error(error, row))
+            facebook_worker.signals.profile_status.connect(lambda status, row=row_index: self.change_profile_status(status, row))
+            facebook_worker.signals.cookie.connect(lambda cookie, row=row_index: self.change_cookie(cookie, row))
+
+            # Execute the worker in the thread pool
+            self.threadpool.start(facebook_worker)
 
         except Exception as error:
-            print('Có lỗi xảy ra khi test proxy:', error)
+            tb_info = traceback.format_exc()
+            print('Có lỗi xảy ra khi test profile:', error, tb_info)
 
     def on_run_button_clicked(self, row, col):
         if len(self.accounts[row]['proxy']) == 0:
