@@ -14,6 +14,7 @@ from auto_action import auto_like, auto_haha, auto_play_video, auto_comment_on_l
 import traceback
 import shutil
 from http.cookies import SimpleCookie
+from selenium.common.exceptions import NoSuchElementException
 
 from traodoisub import Traodoisub
 
@@ -61,40 +62,78 @@ class SeleniumWorker(QRunnable):
 
         self.driver = None
 
+        self.action_type = 'run'
+
+    def set_action(self, action_type):
+         self.action_type = action_type
+
     @pyqtSlot()
     def run(self):
-        self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
-        # self.driver = webdriver.Chrome()
-        self.signals.started.emit()
-        try:
 
-            # Perform some simple action (e.g., login facebook, get tds_cookie, etc...)
-            # self.login()
+        if self.action_type == 'run':
+            self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
+            # self.driver = webdriver.Chrome()
+            self.signals.started.emit()
+            try:
 
-            # Simulate a delay (e.g., to simulate a time-consuming task)
-            # time.sleep(30)
+                # Perform some simple action (e.g., login facebook, get tds_cookie, etc...
+                self.login()
 
-            # self.driver.close()
+                time.sleep(10)
 
-            self.login_by_cookie(cookie_str = self.cookie_str)
+            except Exception as e:
+                time.sleep(30)
+                # Emit the error signal if an exception occurs
+                tb_info = traceback.format_exc()
+                self.signals.error.emit((type(e), e.args, tb_info))
 
-            time.sleep(10)
+            finally:
+                # Close the WebDriver
+                self.driver.quit()
 
-        except Exception as e:
-            time.sleep(30)
-            # Emit the error signal if an exception occurs
-            tb_info = traceback.format_exc()
-            self.signals.error.emit((type(e), e.args, tb_info))
+                # Emit the finished signal
+                self.signals.finished.emit()
 
-        finally:
-            # Close the WebDriver
+        if self.action_type == 'create_profile':
+            pass
+
+    
+    def login(self):
+        cookie_login_check = self.login_by_cookie(cookie_str = self.cookie_str)
+
+        if cookie_login_check:
+            self.signals.result.emit('Lưu profile thành công!')
+            self.signals.profile_status.emit(1)
             self.driver.quit()
+            return
+        
+        time.sleep(1)
+        # remove chrome profile
+        # quit driver before remove a folder
+        self.driver.quit()
+        self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
 
-            # Emit the finished signal
-            self.signals.finished.emit()
+
+        # start a new driver for login_by_credentials
+        self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
+
+        credentials_login_check = self.login_by_credentials(facebook_login_credential=self.facebook_login_credential)
+
+        if credentials_login_check:
+            self.signals.result.emit('Lưu profile thành công!')
+            self.signals.profile_status.emit(1)
+
+            # save a new cookie to caller's account
+            self.save_cookie()
+            self.driver.quit()
+        else:
+            self.signals.result.emit(f'Lưu profile thất bại!')
+            self.signals.profile_status.emit(0)
+            self.driver.quit()
+            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
 
 
-    def login_by_cookie(self, cookie_str):
+    def login_by_cookie(self, cookie_str) -> bool:
 
         cookie = SimpleCookie()
 
@@ -105,7 +144,6 @@ class SeleniumWorker(QRunnable):
 
         self.driver.get("https://www.facebook.com")
 
-        self.signals.result.emit(f"{cookies}")
 
         for key, value in cookies.items():
             cookie = {'name': key, 'value': value}
@@ -113,26 +151,21 @@ class SeleniumWorker(QRunnable):
 
         
 
-        time.sleep(2.5)
+        time.sleep(2)
 
         self.driver.refresh()
 
-        # self.check_success_login()
+        time.sleep(2)
 
+        if self.check_success_login():
+            return True
+        else:
+            return False
     
-    def check_success_login(self):
-        if "https://www.facebook.com/" == self.driver.current_url:
+    def login_by_credentials(self, facebook_login_credential: dict):
 
-            aria_1 = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Facebook']")))
+        facebook_login_credential = self.facebook_login_credential
 
-        
-
-            self.signals.result.emit(f'aria_1: {aria_1}')
-
-        # else:
-        #     return False
-
-    def login(self):
         try:
             self.signals.result.emit('Đang đăng nhập...')
             # Navigate to the Facebook login page
@@ -146,21 +179,21 @@ class SeleniumWorker(QRunnable):
             login_button = self.driver.find_element(By.NAME, "login")
 
             # Enter your Facebook credentials
-            username_input.send_keys(self.facebook_login_credential["uid"])
-            password_input.send_keys(self.facebook_login_credential["password"])
+            username_input.send_keys(facebook_login_credential["uid"])
+            password_input.send_keys(facebook_login_credential["password"])
 
 
             # Click the login button
             login_button.click()
 
-            time.sleep(10)
+            time.sleep(5)
 
             # Find the appovals_code field and checkPointSubmitbutton after click
             appovals_code_input = self.driver.find_element(By.ID, "approvals_code")
             checkPointSubmitbutton = self.driver.find_element(By.ID, "checkpointSubmitButton")
 
             # GET 2FA Code
-            two_fa_code = self.get_2FA_Code(self.facebook_login_credential["fa_secret"])
+            two_fa_code = self.get_2FA_Code(facebook_login_credential["fa_secret"])
 
             # Enter 2FA Code
             appovals_code_input.send_keys(two_fa_code)
@@ -179,24 +212,30 @@ class SeleniumWorker(QRunnable):
             checkPointSubmitbutton.click()
 
         except Exception as error:
+
             self.signals.result.emit(error)
 
-        self.signals.result.emit(self.driver.current_url)
+        finally:
 
+            if self.check_success_login():
+                return True
+            else:
+                return False
+
+    def check_success_login(self):
         if "https://www.facebook.com/" == self.driver.current_url:
 
-            # save new login if login successfully!
-            self.save_cookie(file_name="fb_cookie.txt")
-            
-            self.signals.result.emit(f'Lưu profile thành công!')
-            self.signals.profile_status.emit(1)
-            self.driver.quit()
-            # Add additional checks if needed
-        else:
-            self.signals.result.emit(f'Lưu profile thất bại!')
-            self.signals.profile_status.emit(0)
-            self.driver.quit()
-            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
+            try:
+                ele = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Facebook']")))
+
+                if ele:
+                    return True
+
+                return False
+            except:
+                return False
+
+        return False
 
     def open_new_tab(self, url="/"):
         self.driver.execute_script(f"window.open('{url}');")
@@ -386,7 +425,7 @@ class SeleniumWorker(QRunnable):
         except Exception as error:
             print(error)
 
-    def save_cookie(self, file_name):
+    def save_cookie(self):
         cookies = self.driver.get_cookies()
 
         fb_cookie_str = ""
@@ -396,13 +435,7 @@ class SeleniumWorker(QRunnable):
 
         self.signals.cookie.emit(fb_cookie_str)
 
-        
-        if file_name:
-            with open(file_name, 'w') as file:
-                # Write fb_cookie_str to the file
-                file.write(fb_cookie_str)
-
-            self.signals.result.emit('Wrote facebook cookie successfully!')
+        self.signals.result.emit('Wrote facebook cookie successfully!')
 
     def remove_chrome_profile(self, user_data_directory):
         time.sleep(2)

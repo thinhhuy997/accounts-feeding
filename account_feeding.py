@@ -10,7 +10,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout
-from PyQt5.QtCore import QFile, QTextStream, QThreadPool
+from PyQt5.QtCore import QFile, QTextStream, QThreadPool, QJsonDocument
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
 import threading
@@ -21,6 +21,8 @@ from traodoisub import Traodoisub
 from PyQt5.QtGui import QPixmap
 from pathlib import Path
 import json
+import os
+from proxy_chrome_driver import get_chromedriver
 
 class PasswordDelegate(QtWidgets.QStyledItemDelegate):
     def initStyleOption(self, option, index):
@@ -77,7 +79,7 @@ class Ui_MainWindow(object):
 
         self.centralwidget.setObjectName("centralwidget")
         self.frame = QtWidgets.QFrame(self.centralwidget)
-        self.frame.setGeometry(QtCore.QRect(30, 10, 741, 80))
+        self.frame.setGeometry(QtCore.QRect(30, 10, 1500, 80))
         font = QtGui.QFont()
         font.setPointSize(8)
         font.setBold(False)
@@ -127,14 +129,21 @@ class Ui_MainWindow(object):
         self.importConfig = QtWidgets.QPushButton(self.frame)
         self.importConfig.setGeometry(QtCore.QRect(350, 20, 101, 31))
         self.importConfig.setObjectName("importConfig")
+
         self.feedAccounts = QtWidgets.QPushButton(self.frame)
         self.feedAccounts.setGeometry(QtCore.QRect(460, 20, 101, 31))
         self.feedAccounts.setObjectName("feedAccounts")
+
+        self.exportData = QtWidgets.QPushButton(self.frame)
+        self.exportData.setGeometry(QtCore.QRect(1400, 20, 101, 31))
+        self.exportData.setObjectName("exportData")
+
         self.configDays = QtWidgets.QComboBox(self.frame)
         self.configDays.setGeometry(QtCore.QRect(570, 25, 68, 21))
         self.configDays.setObjectName("configDays")
         self.configDays.addItem("")
         self.configDays.addItem("")
+
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         # 3rd and 4th parameters use to set width and height of the Table Widget
@@ -262,6 +271,8 @@ class Ui_MainWindow(object):
         self.importConfig.clicked.connect(self.import_config_from_file)
         self.feedAccounts.clicked.connect(self.feed_accounts)
 
+        self.exportData.clicked.connect(self.exportToJson)
+
 
 
 
@@ -272,14 +283,15 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.addAccountButton.setText(_translate("MainWindow", "Add accounts"))
-        self.addProxyButton.setText(_translate("MainWindow", "Add proxies"))
+        self.addAccountButton.setText(_translate("MainWindow", "Thêm account"))
+        self.addProxyButton.setText(_translate("MainWindow", "Thêm proxy"))
 
-        self.saveProfiles.setText(_translate("MainWindow", "Save Profiles"))
-        self.importConfig.setText(_translate("MainWindow", "Import config"))
-        self.feedAccounts.setText(_translate("MainWindow", "Feed accounts"))
-        # self.configDays.setItemText(0, _translate("MainWindow", "Day 1"))
-        # self.configDays.setItemText(1, _translate("MainWindow", "Day 2"))
+        self.saveProfiles.setText(_translate("MainWindow", "Tạo profile"))
+        self.importConfig.setText(_translate("MainWindow", "Thêm config"))
+        self.feedAccounts.setText(_translate("MainWindow", "Nuôi"))
+
+        self.exportData.setText(_translate("MainWindow", "Xuất dữ liệu"))
+
 
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("MainWindow", "UID"))
@@ -396,11 +408,11 @@ class Ui_MainWindow(object):
 
                 proxy = self.split_proxies(self.accounts[row_i]['proxy'])
 
-                facebook_worker = SeleniumWorker(facebook_login_credential=facebook_login_credential,
-                                                 cookie_str=self.accounts[row_i]['cookie'],
-                                            proxy=proxy, profile_id=self.accounts[row_i]['uid']
-                                            )
-                
+                facebook_worker = SeleniumWorker(
+                                                facebook_login_credential=facebook_login_credential,
+                                                cookie_str=self.accounts[row_i]['cookie'],
+                                                proxy=proxy, profile_id=self.accounts[row_i]['uid']
+                                                )
                 '''
                 1/1/2024 -
                 Connect signals.started and signals.finished 
@@ -458,10 +470,10 @@ class Ui_MainWindow(object):
             title_action.setEnabled(False)
 
             # Add actions to the context menu
-            action_save_profile = QAction("Save profile", self.tableWidget)
+            action_save_profile = QAction("Test profile", self.tableWidget)
 
             # Connect actions to slots (you can implement your own slots)
-            action_save_profile.triggered.connect(lambda: self.login_and_save_profile(selected_rows))
+            action_save_profile.triggered.connect(lambda: self.test_profile(selected_rows))
 
             # Add actions to the context menu
             context_menu.addAction(action_save_profile)
@@ -469,8 +481,27 @@ class Ui_MainWindow(object):
             # Show the context menu at the global position
             context_menu.exec_(global_pos)
 
-    def login_and_save_profile(self, selected_rows):
-        print(f"Login and save profile for rows {', '.join(map(str, selected_rows))}")
+    def test_profile(self, selected_rows):
+        # print(f"Login and save profile for rows {', '.join(map(str, selected_rows))}")
+        row_index = list(selected_rows)[0]
+        try:
+            proxy = self.split_proxies(self.accounts[row_index]['proxy'])
+
+            profile_id = self.accounts[row_index]['uid']
+
+            print('profile_id:', profile_id)
+
+            if len(proxy) == 0:
+                return self.show_error_dialog(err_msg='Cần thêm proxy để test profile!')
+
+            driver = get_chromedriver(proxy=proxy, profile_id=profile_id)
+
+            driver.get('https://www.facebook.com')
+
+            time.sleep(200)
+
+        except Exception as error:
+            print('Có lỗi xảy ra khi test proxy:', error)
 
     def on_run_button_clicked(self, row, col):
         if len(self.accounts[row]['proxy']) == 0:
@@ -509,11 +540,14 @@ class Ui_MainWindow(object):
         self.changeCellValue(row, self.column_order.index('status'), newValue=f'{error}')
 
     def change_profile_status(self, status, row):
-        if status == 0:
-            self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
+      
+        self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
+
 
     def change_cookie(self, cookie, row):
         self.changeCellValue(row, self.column_order.index('cookie'), newValue=f'{cookie}')
+        # change the account's cookie
+        self.accounts[row]['cookie'] = cookie
 
     def changeCellValue(self, row, col, newValue):
         # newValue == 0 or 1 is corresponding change profile_status column
@@ -591,7 +625,7 @@ class Ui_MainWindow(object):
     def add_accounts_from_file(self):
         try:
             # Open file Dialog
-            file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt)")
+            file_name, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*);;Text Files (*.txt);;JSON Files (*.json)")
             
             # Read file and import to data table
             if file_name:
@@ -599,27 +633,52 @@ class Ui_MainWindow(object):
 
                 file = QFile(file_name)
 
-                if file.open(QFile.ReadOnly | QFile.Text):
-                    stream = QTextStream(file)
-                    facebook_accounts_content = stream.readAll()
-                    # remove first and last space
-                    facebook_accounts_content = facebook_accounts_content.strip()
+                # Check the file extension
+                file_extension = os.path.splitext(file_name)[1]
 
-                    account_lines = facebook_accounts_content.split('\n')
+                if file_extension == '.txt':
+                    if file.open(QFile.ReadOnly | QFile.Text):
+                        stream = QTextStream(file)
+                        facebook_accounts_content = stream.readAll()
+                        # remove first and last space
+                        facebook_accounts_content = facebook_accounts_content.strip()
 
-                    accounts = self.file_preprocessing(account_lines)
+                        account_lines = facebook_accounts_content.split('\n')
 
-                    # Add data to the data table
-                    self.add_accounts_to_table(accounts)
-                    
-                    file.close()
-                else:
-                    print(f"Error opening file: {file.errorString()}")
+                        self.accounts = self.file_preprocessing(account_lines)
+
+                        # Add data to the data table
+                        self.add_accounts_to_table(self.accounts)
+                        
+                        file.close()
+                    else:
+                        print(f"Error opening file: {file.errorString()}")
+
+                if file_extension == '.json':
+                    if file.open(QFile.ReadOnly | QFile.Text):
+                        stream = QTextStream(file)
+                        fa_accounts_content = stream.readAll()
+
+                        # Parse JSON data using QJsonDocument
+                        document = QJsonDocument.fromJson(fa_accounts_content.encode('utf-8'))
+
+                        # Convert QJsonDocument to Python dictionary
+                        fa_accounts_dict : dict = json.loads(document.toJson(QJsonDocument.Compact).data().decode('utf-8'))
+
+                        self.accounts = list(fa_accounts_dict.values())
+
+                        # Add data to the data table
+                        self.add_accounts_to_table(self.accounts)
+                        
+                        file.close()
+
+                        
+
         except Exception as error:
             print(error)
 
     def file_preprocessing(self, account_lines: list):
-        self.accounts = []
+        accounts = []
         for index, account_line in enumerate(account_lines):
 
 
@@ -637,8 +696,8 @@ class Ui_MainWindow(object):
                 "status": '',
                 }
             
-            self.accounts.append(account_obj)
-        return self.accounts
+            accounts.append(account_obj)
+        return accounts
     
 
     def split_proxies(self, proxy_string:str)->dict:
@@ -733,7 +792,6 @@ class Ui_MainWindow(object):
         return False
     
 
-    
     def feed_accounts(self):
         selected_config_day = self.configDays.currentText()
 
@@ -742,7 +800,39 @@ class Ui_MainWindow(object):
             self.show_error_dialog(err_msg="You have not added the config yet!")
         else:
             print('config_day:', selected_config_day)
+
     
+    def convert_data_to_dict(self):
+        accounts_arr = self.accounts
+        accounts_dict = {}
+
+        for item in accounts_arr:
+            key = item['uid']
+
+            # remove item with key = status if it exist
+            if item.get('status') is not None:
+                item.pop('status')
+
+            accounts_dict[key] = item
+
+            
+
+        return accounts_dict
+    
+    def exportToJson(self):
+
+        if len(self.accounts) == 0:
+            return self.show_error_dialog(err_msg="Chưa có dữ liệu nào để xuất file!")
+
+        file_name, _ = QFileDialog.getSaveFileName(None, "Save JSON File", "", "JSON Files (*.json)")
+
+        if file_name:
+            accounts = self.convert_data_to_dict()
+
+            with open(file_name, 'w') as json_file:
+                json.dump(accounts, json_file, indent=4)
+            print(f"Data exported to {file_name}")
+
     
 if __name__ == "__main__":
     import sys

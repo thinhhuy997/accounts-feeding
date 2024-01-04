@@ -1,0 +1,21 @@
+[8340:11360:0104/165757.007:WARNING:chrome_main_delegate.cc(667)] This is Chrome version 120.0.6099.131 (not a warning)
+[8340:11360:0104/165757.060:INFO:policy_logger.cc(144)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(168) Starting CBCM Controller Initialization
+[8340:11360:0104/165757.061:INFO:policy_logger.cc(144)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(196) No machine level policy manager exists.
+[8340:11360:0104/165758.028:INFO:CONSOLE(0)] "Error with Permissions-Policy header: Unrecognized feature: 'ambient-light-sensor'.", source:  (0)
+[8340:11360:0104/165758.131:INFO:CONSOLE(0)] "[DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o", source: https://www.facebook.com/ (0)
+[8340:11360:0104/165758.178:INFO:CONSOLE(0)] "
+%cStop! font-family:helvetica; font-size:20px; font-size:50px; font-weight:bold; color:red; -webkit-text-stroke:1px black;", source:  (0)
+[8340:11360:0104/165758.178:INFO:CONSOLE(0)] "
+%cThis is a browser feature intended for developers. If someone told you to copy and paste something here to enable a Facebook feature or "hack" someone's account, it is a scam and will give them access to your Facebook account. font-family:helvetica; font-size:20px; ", source:  (0)
+[8340:11360:0104/165758.178:INFO:CONSOLE(0)] "
+%cSee https://www.facebook.com/selfxss for more information. font-family:helvetica; font-size:20px; ", source:  (0)
+[8340:11360:0104/165758.178:INFO:CONSOLE(0)] "
+%c ", source:  (0)
+[8340:11360:0104/165812.026:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:265059
+[8340:11360:0104/165814.051:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:5087
+[8340:11360:0104/165814.313:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:33994661
+[8340:11360:0104/165814.790:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:45116
+[8340:11360:0104/165815.749:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:2746900
+[8340:11360:0104/165816.209:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:3844
+[8340:11360:0104/165817.232:WARNING:controller_impl.cc(1190)] Background download complete, client: 6, completion type: 0, file size:883094
+[8340:11360:0104/165823.274:WARNING:pref_notifier_impl.cc(41)] Pref observer for media_router.cast_allow_all_ips found at shutdown.
