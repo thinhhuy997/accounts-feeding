@@ -68,69 +68,71 @@ class SeleniumWorker(QRunnable):
     def run(self):
 
         if 'generate_profile' in self.tasks:
+
+            # Perform some simple action (e.g., login facebook, get tds_cookie, etc...
+            self.generate_profile()
+
+            time.sleep(20)
+
+
+        if 'test_profile' in self.tasks:
+            self.test_profile()
+
+            time.sleep(20)
+
+    
+    def generate_profile(self):
+        self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
+
+        self.signals.started.emit()
+        try:
+            cookie_login_check = self.login_by_cookie(cookie_str = self.cookie_str)
+
+            if cookie_login_check:
+                self.signals.result.emit('Lưu profile thành công!')
+                self.signals.profile_status.emit(1)
+                self.driver.quit()
+                return
+            
+            time.sleep(1)
+            # remove chrome profile
+            # quit driver before remove a folder
+            self.driver.quit()
+            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
+
+
+            # start a new driver for login_by_credentials
             self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
-            # self.driver = webdriver.Chrome()
-            self.signals.started.emit()
-            try:
 
-                # Perform some simple action (e.g., login facebook, get tds_cookie, etc...
-                self.generate_profile()
+            credentials_login_check = self.login_by_credentials(facebook_login_credential=self.facebook_login_credential)
 
-                time.sleep(10)
+            if credentials_login_check:
+                self.signals.result.emit('Lưu profile thành công!')
+                self.signals.profile_status.emit(1)
 
-            except Exception as e:
-                time.sleep(5)
-                # Emit the error signal if an exception occurs
-                tb_info = traceback.format_exc()
-                self.signals.error.emit((type(e), e.args, tb_info))
-
-            finally:
+                # save a new cookie to caller's account
+                self.save_cookie()
+                self.driver.quit()
+            else:
+                self.signals.result.emit(f'Lưu profile thất bại!')
+                self.signals.profile_status.emit(0)
+                self.driver.quit()
+                # self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
+        except Exception as e:
+            time.sleep(5)
+            # Emit the error signal if an exception occurs
+            tb_info = traceback.format_exc()
+            self.signals.error.emit((type(e), e.args, tb_info))
+        finally:
                 # Close the WebDriver
                 self.driver.quit()
 
                 # Emit the finished signal
                 self.signals.finished.emit()
 
-        if 'test_profile' in self.tasks:
-            self.test_profile()
-
-    
-    def generate_profile(self):
-        cookie_login_check = self.login_by_cookie(cookie_str = self.cookie_str)
-
-        if cookie_login_check:
-            self.signals.result.emit('Lưu profile thành công!')
-            self.signals.profile_status.emit(1)
-            self.driver.quit()
-            return
-        
-        time.sleep(1)
-        # remove chrome profile
-        # quit driver before remove a folder
-        self.driver.quit()
-        self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
-
-
-        # start a new driver for login_by_credentials
-        self.driver = get_chromedriver(proxy=self.proxy, profile_id=self.profile_id)
-
-        credentials_login_check = self.login_by_credentials(facebook_login_credential=self.facebook_login_credential)
-
-        if credentials_login_check:
-            self.signals.result.emit('Lưu profile thành công!')
-            self.signals.profile_status.emit(1)
-
-            # save a new cookie to caller's account
-            self.save_cookie()
-            self.driver.quit()
-        else:
-            self.signals.result.emit(f'Lưu profile thất bại!')
-            self.signals.profile_status.emit(0)
-            self.driver.quit()
-            self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
-
 
     def login_by_cookie(self, cookie_str) -> bool:
+        self.signals.result.emit(f'Đang đăng nhập bằng cookie...')
 
         cookie = SimpleCookie()
 
@@ -146,8 +148,6 @@ class SeleniumWorker(QRunnable):
             cookie = {'name': key, 'value': value}
             self.driver.add_cookie(cookie)
 
-        
-
         time.sleep(2)
 
         self.driver.refresh()
@@ -155,8 +155,10 @@ class SeleniumWorker(QRunnable):
         time.sleep(2)
 
         if self.check_success_login():
+            self.signals.result.emit('Đăng nhập bằng cookie thành công!')
             return True
         else:
+            self.signals.result.emit('Đăng nhập bằng cookie thất bại!')
             return False
     
     def login_by_credentials(self, facebook_login_credential: dict):
@@ -198,10 +200,12 @@ class SeleniumWorker(QRunnable):
             # Click the CPS_button
             checkPointSubmitbutton.click()
 
+            time.sleep(2)
+
             # Find checkbox
-            checkBox = self.driver.find_element(By.XPATH, "//div[@class='uiInputLabel clearfix uiInputLabelLegacy']/label")
+            # checkBox = self.driver.find_element(By.XPATH, "//div[@class='uiInputLabel clearfix uiInputLabelLegacy']/label")
             # click check box
-            checkBox.click()
+            # checkBox.click()
 
         
             # find and click another CPS_Button
@@ -242,12 +246,12 @@ class SeleniumWorker(QRunnable):
             self.driver.get('https://www.facebook.com')
 
             if self.check_success_login():
-                self.signals.result.emit(f'Profile vẫn sống khỏe!')
+                self.signals.result.emit(f'Test: profile này vẫn sống khỏe!')
             else:
-                self.signals.result.emit(f'Profile lỗi rồi, đã xóa profile!')
+                self.signals.result.emit(f'Test: profile này lỗi rồi!!')
                 self.signals.profile_status.emit(0)
-                self.driver.quit()
-                self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
+                # self.driver.quit()
+                # self.remove_chrome_profile(user_data_directory=f'./user-profiles/{self.facebook_login_credential["uid"]}')
 
             time.sleep(100)
 

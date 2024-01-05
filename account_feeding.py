@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout, QTextEdit
 from PyQt5.QtCore import QFile, QTextStream, QThreadPool, QJsonDocument
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
@@ -79,44 +79,24 @@ class Ui_MainWindow(object):
 
 
         self.centralwidget.setObjectName("centralwidget")
-        self.frame = QtWidgets.QFrame(self.centralwidget)
-        self.frame.setGeometry(QtCore.QRect(30, 10, 1500, 80))
-        font = QtGui.QFont()
-        font.setPointSize(8)
-        font.setBold(False)
-        font.setWeight(50)
-        self.frame.setFont(font)
-        self.frame.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame.setObjectName("frame")
+        # self.centralwidget = QtWidgets.QFrame(self.centralwidget)
+        # self.centralwidget.setGeometry(QtCore.QRect(30, 10, 1500, 80))
+        # font = QtGui.QFont()
+        # font.setPointSize(8)
+        # font.setBold(False)
+        # font.setWeight(50)
+        # self.centralwidget.setFont(font)
+        # self.centralwidget.setLayoutDirection(QtCore.Qt.LeftToRight)
+        # self.centralwidget.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        # self.centralwidget.setFrameShadow(QtWidgets.QFrame.Raised)
+        # self.centralwidget.setObjectName("frame")
         
-        self.addAccountButton = QtWidgets.QPushButton(self.frame)
-        self.addAccountButton.setGeometry(QtCore.QRect(20, 20, 101, 31))
-        font = QtGui.QFont()
-        font.setFamily("Yu Gothic")
-        font.setPointSize(10)
-        font.setBold(False)
-        font.setWeight(50)
-        self.addAccountButton.setFont(font)
+        self.addAccountButton = QtWidgets.QPushButton(self.centralwidget)
+        self.addAccountButton.setGeometry(QtCore.QRect(28, 20, 101, 31))
         self.addAccountButton.setObjectName("addAccountButton")
 
-        self.addProxyButton = QtWidgets.QPushButton(self.frame)
+        self.addProxyButton = QtWidgets.QPushButton(self.centralwidget)
         self.addProxyButton.setGeometry(QtCore.QRect(130, 20, 101, 31))
-        font = QtGui.QFont()
-        font.setFamily("Yu Gothic")
-        font.setPointSize(10)
-        font.setBold(False)
-        font.setWeight(50)
-        self.addProxyButton.setFont(font)
-        self.addProxyButton.setObjectName("addProxyButton")
-
-        font = QtGui.QFont()
-        font.setFamily("Yu Gothic")
-        font.setPointSize(10)
-        font.setBold(False)
-        font.setWeight(50)
-        self.addProxyButton.setFont(font)
         self.addProxyButton.setObjectName("addProxyButton")
 
 
@@ -124,27 +104,23 @@ class Ui_MainWindow(object):
         
 
         # NEW
-        self.saveProfiles = QtWidgets.QPushButton(self.frame)
-        self.saveProfiles.setGeometry(QtCore.QRect(240, 20, 101, 31))
+        self.saveProfiles = QtWidgets.QPushButton(self.centralwidget)
+        self.saveProfiles.setGeometry(QtCore.QRect(232, 20, 101, 31))
         self.saveProfiles.setObjectName("saveProfiles")
-        self.importConfig = QtWidgets.QPushButton(self.frame)
-        self.importConfig.setGeometry(QtCore.QRect(350, 20, 101, 31))
+
+        self.importConfig = QtWidgets.QPushButton(self.centralwidget)
+        self.importConfig.setGeometry(QtCore.QRect(334, 20, 101, 31))
         self.importConfig.setObjectName("importConfig")
 
-        self.feedAccounts = QtWidgets.QPushButton(self.frame)
-        self.feedAccounts.setGeometry(QtCore.QRect(460, 20, 101, 31))
+        self.feedAccounts = QtWidgets.QPushButton(self.centralwidget)
+        self.feedAccounts.setGeometry(QtCore.QRect(436, 20, 101, 31))
         self.feedAccounts.setObjectName("feedAccounts")
 
-        self.exportData = QtWidgets.QPushButton(self.frame)
+        self.exportData = QtWidgets.QPushButton(self.centralwidget)
         self.exportData.setGeometry(QtCore.QRect(1400, 20, 101, 31))
         self.exportData.setObjectName("exportData")
 
-        self.configDays = QtWidgets.QComboBox(self.frame)
-        self.configDays.setGeometry(QtCore.QRect(570, 25, 68, 21))
-        self.configDays.setObjectName("configDays")
-        self.configDays.addItem("")
-        self.configDays.addItem("")
-
+        
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         # 3rd and 4th parameters use to set width and height of the Table Widget
@@ -222,9 +198,35 @@ class Ui_MainWindow(object):
         self.tableWidget.verticalHeader().setDefaultSectionSize(30)
 
         # Label "File:""
-        self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(30, 90, 741, 16))
-        self.label.setObjectName("label")
+        self.filterLabel = QtWidgets.QLabel(self.centralwidget)
+        self.filterLabel.setGeometry(QtCore.QRect(30, 90, 20, 16))
+        self.filterLabel.setObjectName("filterLabel")
+
+        # Combobox "category"
+        self.category = QtWidgets.QComboBox(self.centralwidget)
+        self.category.setGeometry(QtCore.QRect(54, 89, 120, 21))
+        self.category.setObjectName("category")
+        self.category.addItem("All category")
+
+        # Button chose category options
+        self.categoryOptions = QtWidgets.QPushButton(self.centralwidget)
+        self.categoryOptions.setGeometry(QtCore.QRect(179, 91, 20, 18))
+        self.categoryOptions.setObjectName("categoryOptions")
+
+
+        # Label "config nuôi:""
+        self.feedingConfig = QtWidgets.QLabel(self.centralwidget)
+        self.feedingConfig.setGeometry(QtCore.QRect(225, 90, 60, 16))
+        self.feedingConfig.setObjectName("feedingConfig")
+
+        # configDays
+        self.configDays = QtWidgets.QComboBox(self.centralwidget)
+        self.configDays.setGeometry(QtCore.QRect(286, 89, 68, 21))
+        self.configDays.setObjectName("configDays")
+        self.configDays.addItem("")
+
+        
+
 
         # Label "Total selected rows:"
         self.totalSelectedRows = QtWidgets.QLabel(self.centralwidget)
@@ -266,11 +268,13 @@ class Ui_MainWindow(object):
 
 
         # new
-        self.addAccountButton.clicked.connect(self.add_accounts_from_file)
-        self.addProxyButton.clicked.connect(self.add_proxies_from_file)
+        self.addAccountButton.clicked.connect(self.show_add_accounts_dialog)
+        self.addProxyButton.clicked.connect(self.show_add_proxies_dialog)
         self.saveProfiles.clicked.connect(self.save_profiles)
         self.importConfig.clicked.connect(self.import_config_from_file)
         self.feedAccounts.clicked.connect(self.feed_accounts)
+        
+        self.categoryOptions.click.connect(self.choose_category_options)
 
         self.exportData.clicked.connect(self.exportToJson)
 
@@ -284,8 +288,9 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.addAccountButton.setText(_translate("MainWindow", "Thêm account"))
+        self.addAccountButton.setText(_translate("MainWindow", "Thêm tài khoản"))
         self.addProxyButton.setText(_translate("MainWindow", "Thêm proxy"))
+        self.categoryOptions.setText(_translate("MainWindow", "..."))
 
         self.saveProfiles.setText(_translate("MainWindow", "Tạo profile"))
         self.importConfig.setText(_translate("MainWindow", "Thêm config"))
@@ -320,7 +325,9 @@ class Ui_MainWindow(object):
         __sortingEnabled = self.tableWidget.isSortingEnabled()
         self.tableWidget.setSortingEnabled(False)
 
-        self.label.setText(_translate("MainWindow", "File:"))
+        self.filterLabel.setText(_translate("MainWindow", "Lọc:"))
+
+        self.feedingConfig.setText(_translate("MainWindow", "Config nuôi:"))
 
         # NEW
         self.totalSelectedRows.setText(_translate("MainWindow", f"(*) Selected accounts: {self.selected_rows_count}"))
@@ -336,10 +343,10 @@ class Ui_MainWindow(object):
         layout = QVBoxLayout(self.centralwidget)
 
         # Create buttons
-        button1 = QPushButton('Use Cookie', self.frame)
+        button1 = QPushButton('Use Cookie', self.centralwidget)
         button1.clicked.connect(self.save_profile_by_cookie)
 
-        button2 = QPushButton('Use Profile', self.frame)
+        button2 = QPushButton('Use Profile', self.centralwidget)
         button2.clicked.connect(self.save_profile_by_credentials)
 
         # Add buttons to layout
@@ -488,6 +495,10 @@ class Ui_MainWindow(object):
         # print(f"Login and save profile for rows {', '.join(map(str, selected_rows))}")
         row_index = list(selected_rows)[0]
         try:
+            if self.accounts[row_index]['profile_status'] == False:
+                return self.show_error_dialog(err_msg='Tài khoản này không tồn tại profile để test!')
+
+
             if len(self.accounts[row_index]['proxy']) == 0:
                 return self.show_error_dialog(err_msg='Cần thêm proxy để test profile!')
 
@@ -565,6 +576,8 @@ class Ui_MainWindow(object):
     def change_profile_status(self, status, row):
       
         self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
+        self.accounts[row]['profile_status'] = True
+        
 
 
     def change_cookie(self, cookie, row):
@@ -580,6 +593,8 @@ class Ui_MainWindow(object):
             new_item.setPixmap(pixmap)
             new_item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.tableWidget.setCellWidget(row, col, new_item)
+
+            self.accounts[row]['profile_status'] = False
         elif newValue == 1:
             new_item = QtWidgets.QLabel()
             pixmap = QPixmap(self.check_mark_img)
@@ -615,6 +630,10 @@ class Ui_MainWindow(object):
                     item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
                     self.tableWidget.setCellWidget(row_index, column_index, item)
+
+                    self.accounts[row_index]['profile_status'] = True
+                else:
+                    self.accounts[row_index]['profile_status'] = False
             else:
                 item = QtWidgets.QTableWidgetItem()
                 item.setText(_translate("MainWindow", str(value)))
@@ -652,7 +671,6 @@ class Ui_MainWindow(object):
             
             # Read file and import to data table
             if file_name:
-                self.label.setText(str(file_name))
 
                 file = QFile(file_name)
 
@@ -695,7 +713,7 @@ class Ui_MainWindow(object):
                         
                         file.close()
 
-                        
+            print('accounts:', self.accounts)
 
         except Exception as error:
             print(error)
@@ -716,7 +734,7 @@ class Ui_MainWindow(object):
                 "email": account_values[3],
                 "email_password": account_values[4],
                 "proxy": '',
-                "status": '',
+                "status": ''
                 }
             
             accounts.append(account_obj)
@@ -738,7 +756,6 @@ class Ui_MainWindow(object):
                     
                 # Read file and import to data table
                 if file_name:
-                    self.label.setText(str(file_name))
 
                     file = QFile(file_name)
 
@@ -856,7 +873,94 @@ class Ui_MainWindow(object):
                 json.dump(accounts, json_file, indent=4)
             print(f"Data exported to {file_name}")
 
-    
+    def show_add_accounts_dialog(self):
+        # Create a dialog
+        self.dialog = QDialog()
+        self.dialog.setWindowTitle('Thêm tài khoản')
+        self.dialog.setGeometry(450, 180, 1000, 390)  # Set the size of the dialog
+
+        # Create a text edit box
+        text_edit = QTextEdit(self.dialog)
+        text_edit.setGeometry(10, 10, 900, 360)
+
+        # Add Save button to close the dialog
+        save_button = QPushButton('Lưu', self.dialog)
+        save_button.clicked.connect(lambda: self.onSaveAddAccountsClicked(text_edit.toPlainText()))
+
+        # Set up the layout
+        dialog_layout = QVBoxLayout()
+        dialog_layout.addWidget(text_edit)
+        dialog_layout.addWidget(save_button)
+
+        self.dialog.setLayout(dialog_layout)
+
+        # Show the dialog
+        self.dialog.exec_()
+
+    def onSaveAddAccountsClicked(self, text):
+        account_lines = text.splitlines()
+
+        self.accounts = self.file_preprocessing(account_lines)
+
+        # Add data to the data table
+        self.add_accounts_to_table(self.accounts)
+        
+        self.dialog.close()
+
+    def show_add_proxies_dialog(self):
+        if self.tableWidget.rowCount() == 0:
+            return self.show_error_dialog(err_msg="Bạn phải thêm tài khoản trước khi thêm proxy")
+
+        # Create a dialog
+        self.dialog = QDialog()
+        self.dialog.setWindowTitle('Thêm proxy')
+        self.dialog.setGeometry(450, 180, 1000, 390)  # Set the size of the dialog
+
+        # Create a text edit box
+        text_edit = QTextEdit(self.dialog)
+        text_edit.setGeometry(10, 10, 900, 360)
+
+        # Add Save button to close the dialog
+        save_button = QPushButton('Lưu', self.dialog)
+        save_button.clicked.connect(lambda: self.onSaveAddProxiesClicked(text_edit.toPlainText()))
+
+        # Set up the layout
+        dialog_layout = QVBoxLayout()
+        dialog_layout.addWidget(text_edit)
+        dialog_layout.addWidget(save_button)
+
+        self.dialog.setLayout(dialog_layout)
+
+        # Show the dialog
+        self.dialog.exec_()
+
+    def onSaveAddProxiesClicked(self, text):
+
+        proxy_lines = text.splitlines()
+
+        print('proxy_lines', proxy_lines)
+        print('len', len(proxy_lines))
+
+        if len(proxy_lines) != 0:
+            count = 0
+            for account in self.accounts:
+                if count > len(proxy_lines) - 1:
+                    # reset count to 0
+                    count = 0
+
+                account["proxy"] = proxy_lines[count]
+                
+                # increase count
+                count += 1
+
+                
+            self.add_accounts_to_table(self.accounts)             
+
+            print("Added proxies to accounts successfully!")
+        
+        
+        self.dialog.close()
+
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
