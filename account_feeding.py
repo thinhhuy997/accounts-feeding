@@ -274,15 +274,9 @@ class Ui_MainWindow(object):
         self.importConfig.clicked.connect(self.import_config_from_file)
         self.feedAccounts.clicked.connect(self.feed_accounts)
         
-        self.categoryOptions.click.connect(self.choose_category_options)
+        # self.categoryOptions.clicked.connect(self.choose_category_options)
 
         self.exportData.clicked.connect(self.exportToJson)
-
-
-
-
-        
-        
 
 
     def retranslateUi(self, MainWindow):

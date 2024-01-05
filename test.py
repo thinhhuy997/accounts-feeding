@@ -1,61 +1,64 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QDialog, QVBoxLayout, QTextEdit, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QListView, QWidget
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-        self.initUI()
 
-    def initUI(self):
-        # Create a button
-        button = QPushButton('Show Dialog', self)
-        button.clicked.connect(self.showDialog)
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(800, 600)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.widget = QtWidgets.QWidget(self.centralwidget)
+        self.widget.setGeometry(QtCore.QRect(240, 190, 171, 131))
+        self.widget.setObjectName("widget")
+        self.widget.setStyleSheet("background-color: white;")
+        self.pushButton = QtWidgets.QPushButton(self.widget)
+        self.pushButton.setGeometry(QtCore.QRect(20, 10, 75, 23))
+        self.pushButton.setObjectName("pushButton")
 
-        # Set up the main window
-        layout = QVBoxLayout()
-        layout.addWidget(button)
+        self.showWidgetButton = QtWidgets.QPushButton(self.centralwidget)
+        self.showWidgetButton.setGeometry(QtCore.QRect(100, 10, 75, 23))
+        self.showWidgetButton.setObjectName("showWidgetButton")
 
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
+        self.radioButton = QtWidgets.QRadioButton(self.widget)
+        self.radioButton.setGeometry(QtCore.QRect(30, 50, 82, 17))
+        self.radioButton.setObjectName("radioButton")
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 21))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
 
-        self.setWindowTitle('PyQt5 Dialog Example')
-        self.setGeometry(100, 100, 400, 300)
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    def showDialog(self):
-        # Create a larger dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle('Dialog with Text Edit')
-        dialog.setGeometry(100, 100, 500, 400)  # Set the size of the dialog
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.pushButton.setText(_translate("MainWindow", "Test"))
+        self.radioButton.setText(_translate("MainWindow", "Test2"))
 
-        # Create a text edit box
-        text_edit = QTextEdit(dialog)
-        text_edit.setGeometry(10, 10, 480, 300)
+        self.showWidgetButton.setText(_translate("MainWindow", "Show"))
 
-        # Add Save button to close the dialog
-        save_button = QPushButton('Save', dialog)
-        save_button.clicked.connect(lambda: self.onSaveClicked(dialog, text_edit.toPlainText()))
+        self.showWidgetButton.clicked.connect(self.toggle_list_view)
 
-        # Set up the layout
-        dialog_layout = QVBoxLayout()
-        dialog_layout.addWidget(text_edit)
-        dialog_layout.addWidget(save_button)
+    def toggle_list_view(self):
+        if self.widget.isHidden():
+            self.widget.show()
+        else:
+            self.widget.hide()
 
-        dialog.setLayout(dialog_layout)
-
-        # Show the dialog
-        dialog.exec_()
-
-    def onSaveClicked(self, dialog, text):
-        lines = text.splitlines()
-        print("Text lines:")
-        for line in lines:
-            print(line)
-        dialog.accept()  # Close the dialog
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
     sys.exit(app.exec_())
