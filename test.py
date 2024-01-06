@@ -1,64 +1,73 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QListView, QWidget
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QFileDialog
+import json
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+class MyTable(QTableWidget):
+    def __init__(self):
+        super().__init__()
 
+    def save_to_json(self, filename):
+        table_data = []
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-        self.widget = QtWidgets.QWidget(self.centralwidget)
-        self.widget.setGeometry(QtCore.QRect(240, 190, 171, 131))
-        self.widget.setObjectName("widget")
-        self.widget.setStyleSheet("background-color: white;")
-        self.pushButton = QtWidgets.QPushButton(self.widget)
-        self.pushButton.setGeometry(QtCore.QRect(20, 10, 75, 23))
-        self.pushButton.setObjectName("pushButton")
+        for row in range(self.rowCount()):
+            row_data = {}
+            for column in range(self.columnCount()):
+                item = self.item(row, column)
+                if item is not None:
+                    row_data[self.horizontalHeaderItem(column).text()] = item.text()
+            table_data.append(row_data)
 
-        self.showWidgetButton = QtWidgets.QPushButton(self.centralwidget)
-        self.showWidgetButton.setGeometry(QtCore.QRect(100, 10, 75, 23))
-        self.showWidgetButton.setObjectName("showWidgetButton")
+        with open(filename, 'w') as file:
+            json.dump(table_data, file, indent=2)
 
-        self.radioButton = QtWidgets.QRadioButton(self.widget)
-        self.radioButton.setGeometry(QtCore.QRect(30, 50, 82, 17))
-        self.radioButton.setObjectName("radioButton")
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 21))
-        self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+    def load_from_json(self, filename):
+        with open(filename, 'r') as file:
+            json_data = json.load(file)
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.setRowCount(0)
+        for row_data in json_data:
+            row_position = self.rowCount()
+            self.insertRow(row_position)
 
-    def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton.setText(_translate("MainWindow", "Test"))
-        self.radioButton.setText(_translate("MainWindow", "Test2"))
+            for key, value in row_data.items():
+                item = QTableWidgetItem(str(value))
+                self.setItem(row_position, self.horizontalHeader().indexOf(key), item)
 
-        self.showWidgetButton.setText(_translate("MainWindow", "Show"))
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-        self.showWidgetButton.clicked.connect(self.toggle_list_view)
+        self.table = MyTable()
+        self.setup_ui()
+        
+    def setup_ui(self):
+        central_widget = QWidget(self)
+        layout = QVBoxLayout(central_widget)
+        layout.addWidget(self.table)
 
-    def toggle_list_view(self):
-        if self.widget.isHidden():
-            self.widget.show()
-        else:
-            self.widget.hide()
+        save_button = QPushButton("Save to JSON", self)
+        save_button.clicked.connect(self.save_to_json)
+        layout.addWidget(save_button)
 
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+        load_button = QPushButton("Load from JSON", self)
+        load_button.clicked.connect(self.load_from_json)
+        layout.addWidget(load_button)
+
+        self.setCentralWidget(central_widget)
+
+    def save_to_json(self):
+        filename, _ = QFileDialog.getSaveFileName(self, "Save to JSON", "", "JSON Files (*.json)")
+        if filename:
+            self.table.save_to_json(filename)
+
+    def load_from_json(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Load from JSON", "", "JSON Files (*.json)")
+        if filename:
+            self.table.load_from_json(filename)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.setGeometry(100, 100, 800, 600)
+    main_window.show()
     sys.exit(app.exec_())

@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout, QTextEdit
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout, QTextEdit, QLabel, QLineEdit
 from PyQt5.QtCore import QFile, QTextStream, QThreadPool, QJsonDocument
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
@@ -32,12 +32,47 @@ class PasswordDelegate(QtWidgets.QStyledItemDelegate):
         hint = style.styleHint(QtWidgets.QStyle.SH_LineEdit_PasswordCharacter)
         option.text = chr(hint) * len(option.text)
 
+class AddCategoryDialog(QDialog):
+    def __init__(self, parent=None):
+        super(AddCategoryDialog, self).__init__(parent)
+        self.setWindowTitle("Add new category")
+        self.setGeometry(400, 200, 300, 100)
+
+        self.label = QLabel("Nhập category mới:")
+        self.text_input = QLineEdit(self)
+        self.ok_button = QPushButton("Lưu", self)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.label)
+        layout.addWidget(self.text_input)
+        layout.addWidget(self.ok_button)
+
+        self.ok_button.clicked.connect(self.accept)
+    
+class RemoveCategoryDialog(QDialog):
+    def __init__(self, parent=None):
+        super(AddCategoryDialog, self).__init__(parent)
+        self.setWindowTitle("Add new category")
+        self.setGeometry(400, 200, 300, 100)
+
+        self.label = QLabel("Nhập category mới:")
+        self.text_input = QLineEdit(self)
+        self.ok_button = QPushButton("Lưu", self)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.label)
+        layout.addWidget(self.text_input)
+        layout.addWidget(self.ok_button)
+
+        self.ok_button.clicked.connect(self.accept)
+
 class Ui_MainWindow(object):
 
     def __init__(self):
         self.column_order = ["uid", "password", "fa_secret", "cookie", "token", "profile_status","email", "email_password", "proxy", "status"]
 
-        self.accounts = []
+        self.accounts = {}
+        
         self.base_url = "https://traodoisub.com"
 
         # New
@@ -208,10 +243,24 @@ class Ui_MainWindow(object):
         self.category.setObjectName("category")
         self.category.addItem("All category")
 
-        # Button chose category options
+        # Button choose category options
         self.categoryOptions = QtWidgets.QPushButton(self.centralwidget)
         self.categoryOptions.setGeometry(QtCore.QRect(179, 91, 20, 18))
         self.categoryOptions.setObjectName("categoryOptions")
+
+        # NEW 6/1
+        self.widget = QtWidgets.QWidget(self.centralwidget)
+        self.widget.setGeometry(QtCore.QRect(180, 110, 109, 58))
+        self.widget.setObjectName("widget")
+        self.widget.setStyleSheet("background-color: #eeeee4;")
+        self.AddCategory = QtWidgets.QPushButton(self.widget)
+        self.AddCategory.setGeometry(QtCore.QRect(5, 4, 99, 23))
+        self.AddCategory.setObjectName("AddCategory")
+        self.AddCategory.setStyleSheet("background-color: white;")
+        self.RemoveCategory = QtWidgets.QPushButton(self.widget)
+        self.RemoveCategory.setGeometry(QtCore.QRect(5, 29, 99, 23))
+        self.RemoveCategory.setObjectName("RemoveCategory")
+        self.RemoveCategory.setStyleSheet("background-color: white;")
 
 
         # Label "config nuôi:""
@@ -224,6 +273,8 @@ class Ui_MainWindow(object):
         self.configDays.setGeometry(QtCore.QRect(286, 89, 68, 21))
         self.configDays.setObjectName("configDays")
         self.configDays.addItem("")
+
+        
 
         
 
@@ -278,6 +329,12 @@ class Ui_MainWindow(object):
 
         self.exportData.clicked.connect(self.exportToJson)
 
+        # New 6/1
+        self.category.currentTextChanged.connect(self.update_table)
+        self.categoryOptions.clicked.connect(self.toggle_category_options)
+        self.AddCategory.clicked.connect(self.show_add_new_category)
+        self.RemoveCategory.clicked.connect(self.show_confirm_remove_category)
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -291,6 +348,10 @@ class Ui_MainWindow(object):
         self.feedAccounts.setText(_translate("MainWindow", "Nuôi"))
 
         self.exportData.setText(_translate("MainWindow", "Xuất dữ liệu"))
+
+        # new 6/1
+        self.AddCategory.setText(_translate("MainWindow", "Add category"))
+        self.RemoveCategory.setText(_translate("MainWindow", "Remove category"))
 
 
         item = self.tableWidget.horizontalHeaderItem(0)
@@ -330,6 +391,14 @@ class Ui_MainWindow(object):
         self.totalCompletedRows.setText(_translate("MainWindow", f"Completed accounts: {self.completed_threads}"))
 
         self.tableWidget.itemSelectionChanged.connect(self.updateSelectedRows)
+
+        self.accounts['All category'] = []
+
+        self.widget.hide()
+
+        # NEW
+        # Load data when start project
+        self.load_data()
 
     def open_dialog(self):
         dialog = QDialog()
@@ -387,6 +456,8 @@ class Ui_MainWindow(object):
 
 
     def save_profiles(self):
+        current_category = self.category.currentText()
+
         # Get selected items
         selected_rows = set(index.row() for index in self.tableWidget.selectionModel().selectedRows())
         selected_rows = list(selected_rows)
@@ -395,7 +466,7 @@ class Ui_MainWindow(object):
 
         if len(selected_rows) == 0:
             self.show_error_dialog(err_msg='No rows have been selected yet!')
-        elif self.accounts[selected_rows[0]]['proxy'] == '':
+        elif self.accounts[current_category][selected_rows[0]]['proxy'] == '':
             self.show_error_dialog(err_msg='No proxy added yet!')
         else:
 
@@ -403,17 +474,17 @@ class Ui_MainWindow(object):
             for row_i in selected_rows:
 
                 facebook_login_credential = {
-                    "uid": self.accounts[row_i]["uid"],
-                    "password": self.accounts[row_i]["password"],
-                    "fa_secret": self.accounts[row_i]["fa_secret"],
+                    "uid": self.accounts[current_category][row_i]["uid"],
+                    "password": self.accounts[current_category][row_i]["password"],
+                    "fa_secret": self.accounts[current_category][row_i]["fa_secret"],
                 }
 
-                proxy = self.split_proxies(self.accounts[row_i]['proxy'])
+                proxy = self.split_proxies(self.accounts[current_category][row_i]['proxy'])
 
                 facebook_worker = SeleniumWorker(
                                                 facebook_login_credential=facebook_login_credential,
-                                                cookie_str=self.accounts[row_i]['cookie'],
-                                                proxy=proxy, profile_id=self.accounts[row_i]['uid'],
+                                                cookie_str=self.accounts[current_category][row_i]['cookie'],
+                                                proxy=proxy, profile_id=self.accounts[current_category][row_i]['uid'],
                                                 tasks=['generate_profile']
                                                 )
 
@@ -486,26 +557,28 @@ class Ui_MainWindow(object):
             context_menu.exec_(global_pos)
 
     def test_profile(self, selected_rows):
-        # print(f"Login and save profile for rows {', '.join(map(str, selected_rows))}")
+
+        current_category = self.category.currentText()
+
         row_index = list(selected_rows)[0]
         try:
-            if self.accounts[row_index]['profile_status'] == False:
+            if self.accounts[current_category][row_index]['profile_status'] == False:
                 return self.show_error_dialog(err_msg='Tài khoản này không tồn tại profile để test!')
 
 
-            if len(self.accounts[row_index]['proxy']) == 0:
+            if len(self.accounts[current_category][row_index]['proxy']) == 0:
                 return self.show_error_dialog(err_msg='Cần thêm proxy để test profile!')
 
-            proxy = self.split_proxies(self.accounts[row_index]['proxy'])
+            proxy = self.split_proxies(self.accounts[current_category][row_index]['proxy'])
 
-            profile_id = self.accounts[row_index]['uid']
+            profile_id = self.accounts[current_category][row_index]['uid']
 
-            cookie = self.accounts[row_index]['cookie']
+            cookie = self.accounts[current_category][row_index]['cookie']
 
             facebook_login_credential = {
-                    "uid": self.accounts[row_index]["uid"],
-                    "password": self.accounts[row_index]["password"],
-                    "fa_secret": self.accounts[row_index]["fa_secret"],
+                    "uid": self.accounts[current_category][row_index]["uid"],
+                    "password": self.accounts[current_category][row_index]["password"],
+                    "fa_secret": self.accounts[current_category][row_index]["fa_secret"],
                 }
 
 
@@ -532,22 +605,24 @@ class Ui_MainWindow(object):
             print('Có lỗi xảy ra khi test profile:', error, tb_info)
 
     def on_run_button_clicked(self, row, col):
-        if len(self.accounts[row]['proxy']) == 0:
+        current_category = self.category.currentText()
+
+        if len(self.accounts[current_category][row]['proxy']) == 0:
             self.changeCellValue(row=row, col=self.column_order.index('status'), newValue='Lỗi xảy ra: Hãy thêm proxies trước!')
         else:
             # _______________USE SELENIUM-FACEBOOK-WORKER_________________
             facebook_login_credential = {
-                "uid": self.accounts[row]["face_uid"],
-                "password": self.accounts[row]["face_pass"],
-                "fa_secret": self.accounts[row]["face_secret"],
+                "uid": self.accounts[current_category][row]["face_uid"],
+                "password": self.accounts[current_category][row]["face_pass"],
+                "fa_secret": self.accounts[current_category][row]["face_secret"],
             }
 
             tds_login_credential = {
-                'username': self.accounts[row]['tds_username'],
-                'password': self.accounts[row]['tds_pass']
+                'username': self.accounts[current_category][row]['tds_username'],
+                'password': self.accounts[current_category][row]['tds_pass']
             }
 
-            proxy = self.split_proxies(self.accounts[row]['proxy'])
+            proxy = self.split_proxies(self.accounts[current_category][row]['proxy'])
 
             facebook_worker = SeleniumWorker(facebook_login_credential=facebook_login_credential,
                                             tds_login_credential=tds_login_credential,
@@ -568,18 +643,22 @@ class Ui_MainWindow(object):
         self.changeCellValue(row, self.column_order.index('status'), newValue=f'{error}')
 
     def change_profile_status(self, status, row):
+        current_category = self.category.currentText()
       
         self.changeCellValue(row, self.column_order.index('profile_status'), newValue=status)
-        self.accounts[row]['profile_status'] = True
+        self.accounts[current_category][row]['profile_status'] = True
         
 
 
     def change_cookie(self, cookie, row):
+        current_category = self.category.currentText()
+
         self.changeCellValue(row, self.column_order.index('cookie'), newValue=f'{cookie}')
         # change the account's cookie
-        self.accounts[row]['cookie'] = cookie
+        self.accounts[current_category][row]['cookie'] = cookie
 
     def changeCellValue(self, row, col, newValue):
+        current_category = self.category.currentText()
         # newValue == 0 or 1 is corresponding change profile_status column
         if newValue == 0:
             new_item = QtWidgets.QLabel()
@@ -588,7 +667,7 @@ class Ui_MainWindow(object):
             new_item.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.tableWidget.setCellWidget(row, col, new_item)
 
-            self.accounts[row]['profile_status'] = False
+            self.accounts[current_category][row]['profile_status'] = False
         elif newValue == 1:
             new_item = QtWidgets.QLabel()
             pixmap = QPixmap(self.check_mark_img)
@@ -604,8 +683,11 @@ class Ui_MainWindow(object):
 
 
     def add_row(self, row_index, data):
+        current_category = self.category.currentText()
+
         _translate = QtCore.QCoreApplication.translate
         for column_index, key in enumerate(self.column_order):
+
             value = data.get(key, "")
 
             if key == "uid":
@@ -625,38 +707,40 @@ class Ui_MainWindow(object):
 
                     self.tableWidget.setCellWidget(row_index, column_index, item)
 
-                    self.accounts[row_index]['profile_status'] = True
+                    self.accounts[current_category][row_index]['profile_status'] = True
                 else:
-                    self.accounts[row_index]['profile_status'] = False
+                    self.accounts[current_category][row_index]['profile_status'] = False
+                    pass
             else:
                 item = QtWidgets.QTableWidgetItem()
                 item.setText(_translate("MainWindow", str(value)))
                 self.tableWidget.setItem(row_index, column_index, item)
 
+
             
 
 
     def add_accounts_to_table(self, accounts):
-        try:
-            self.tableWidget.setRowCount(len(accounts))
-            __sortingEnabled = self.tableWidget.isSortingEnabled()
+        
+        
+        self.tableWidget.setRowCount(len(accounts))
+        __sortingEnabled = self.tableWidget.isSortingEnabled()
 
-            # Positions of field columns in the data table
-            # column_order = ["tds_username", "tds_pass", "face_uid", "face_pass", "cookie", "token", "proxy", "user_agent", "tds_coins",  "status",  "action"]
+        # Positions of field columns in the data table
+        # column_order = ["tds_username", "tds_pass", "face_uid", "face_pass", "cookie", "token", "proxy", "user_agent", "tds_coins",  "status",  "action"]
 
-            for row_index, account_data in enumerate(accounts):
-                self.add_row(row_index, account_data)
-            self.tableWidget.setSortingEnabled(__sortingEnabled)
+        for row_index, account_data in enumerate(accounts):
+            self.add_row(row_index, account_data)
+        self.tableWidget.setSortingEnabled(__sortingEnabled)
 
-            password_delegate = PasswordDelegate()
+        password_delegate = PasswordDelegate()
 
-            # Set format (*) for columns 'password' and 'email_password' 
-            self.tableWidget.setItemDelegateForColumn(self.column_order.index('password'), password_delegate)
-            self.tableWidget.setItemDelegateForColumn(self.column_order.index('email_password'), password_delegate)    
+        # Set format (*) for columns 'password' and 'email_password' 
+        self.tableWidget.setItemDelegateForColumn(self.column_order.index('password'), password_delegate)
+        self.tableWidget.setItemDelegateForColumn(self.column_order.index('email_password'), password_delegate)    
 
-            print('Added accounts successfully!')
-        except Exception as error:
-            print(error)
+        print('Added accounts successfully!')
+
 
     def add_accounts_from_file(self):
         try:
@@ -712,8 +796,8 @@ class Ui_MainWindow(object):
         except Exception as error:
             print(error)
 
-    def file_preprocessing(self, account_lines: list):
-        accounts = []
+    def file_preprocessing(self, account_lines) -> None:
+        accounts_arr = []
         for index, account_line in enumerate(account_lines):
 
 
@@ -731,9 +815,12 @@ class Ui_MainWindow(object):
                 "status": ''
                 }
             
-            accounts.append(account_obj)
-        return accounts
-    
+            accounts_arr.append(account_obj)
+
+        
+        current_category = self.category.currentText()
+        self.accounts[current_category] = accounts_arr
+        return None
 
     def split_proxies(self, proxy_string:str)->dict:
         host, port, username, password = proxy_string.split(':')
@@ -894,10 +981,12 @@ class Ui_MainWindow(object):
     def onSaveAddAccountsClicked(self, text):
         account_lines = text.splitlines()
 
-        self.accounts = self.file_preprocessing(account_lines)
+        self.file_preprocessing(account_lines) #add more account to self.accounts by "key-value pairs"
+
+        current_category = self.category.currentText()
 
         # Add data to the data table
-        self.add_accounts_to_table(self.accounts)
+        self.add_accounts_to_table(self.accounts[current_category])
         
         self.dialog.close()
 
@@ -930,6 +1019,8 @@ class Ui_MainWindow(object):
 
     def onSaveAddProxiesClicked(self, text):
 
+        current_category = self.category.currentText()
+
         proxy_lines = text.splitlines()
 
         print('proxy_lines', proxy_lines)
@@ -937,7 +1028,7 @@ class Ui_MainWindow(object):
 
         if len(proxy_lines) != 0:
             count = 0
-            for account in self.accounts:
+            for account in self.accounts[current_category]:
                 if count > len(proxy_lines) - 1:
                     # reset count to 0
                     count = 0
@@ -948,12 +1039,69 @@ class Ui_MainWindow(object):
                 count += 1
 
                 
-            self.add_accounts_to_table(self.accounts)             
+            self.add_accounts_to_table(self.accounts[current_category])             
 
             print("Added proxies to accounts successfully!")
         
         
         self.dialog.close()
+
+    def toggle_category_options(self):
+        if self.widget.isHidden():
+            self.widget.show()
+        else:
+            self.widget.hide()
+
+    def show_add_new_category(self):
+        self.widget.hide()
+        dialog = AddCategoryDialog()
+        result = dialog.exec_()
+
+        if result == QDialog.Accepted:
+            category_input_text = dialog.text_input.text()
+            
+
+            # Check if the item already exists in the QComboBox
+            checked_index = self.category.findText(category_input_text)
+
+            if checked_index != -1: # Item existed
+                return self.show_error_dialog(err_msg=f"Category: '{category_input_text}' đã tồn tại!")
+
+
+            self.category.addItem(category_input_text)
+
+            # add new category as a key to self.accounts: dict
+            self.accounts[category_input_text] = []
+
+            self.category.setCurrentText(category_input_text)
+
+            print(f'new category: {category_input_text}')
+
+            print(self.accounts)
+
+
+    def show_confirm_remove_category(self):
+        self.widget.hide()
+        confirmation = QMessageBox.question(None, 'Confirmation', 'Bạn có chắc chắn muốn xóa?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if confirmation == QMessageBox.Yes:
+            print('You clicked Yes!')
+            self.removeCurrentCategory()
+        else:
+            print('You clicked No.')
+  
+    def removeCurrentCategory(self):
+        # Remove the currently selected item from the QComboBox
+        current_index = self.category.currentIndex()
+        if current_index != 0:  # Check if an item is selected
+            self.category.removeItem(current_index)
+
+    def update_table(self, category):
+        self.add_accounts_to_table(self.accounts[category])
+
+    def load_data(self):
+        print("Data loaded...")
+        
 
 if __name__ == "__main__":
     import sys
