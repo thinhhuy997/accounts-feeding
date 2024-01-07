@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout, QTextEdit, QLabel, QLineEdit
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMenu, QAction, QMessageBox, QDialog, QVBoxLayout, QTextEdit, QLabel, QLineEdit, QHBoxLayout, QGridLayout
 from PyQt5.QtCore import QFile, QTextStream, QThreadPool, QJsonDocument
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
@@ -334,6 +334,9 @@ class Ui_MainWindow(object):
         self.categoryOptions.clicked.connect(self.toggle_category_options)
         self.AddCategory.clicked.connect(self.show_add_new_category)
         self.RemoveCategory.clicked.connect(self.show_confirm_remove_category)
+
+        # New
+        self.tempTableWidget = QtWidgets.QTableWidget()
 
 
     def retranslateUi(self, MainWindow):
@@ -741,6 +744,24 @@ class Ui_MainWindow(object):
 
         print('Added accounts successfully!')
 
+    def add_accounts_to_temp_table(self, accounts: list):
+        self.tempTableWidget.setRowCount(len(accounts))
+        __sortingEnabled = self.tableWidget.isSortingEnabled()
+
+        for row_index, account_data in enumerate(accounts):
+            self.add_row_to_temp_table(row_index, account_data)
+        self.tempTableWidget.setSortingEnabled(__sortingEnabled)
+
+        print('Added accounts to the temporary table!')
+
+    def add_row_to_temp_table(self, row_index, data):
+
+        print('-----------------------')
+        print(data)
+        
+        for column_index, cell in enumerate(data):
+            item = QtWidgets.QTableWidgetItem(cell)
+            self.tempTableWidget.setItem(row_index, column_index, item)
 
     def add_accounts_from_file(self):
         try:
@@ -796,24 +817,29 @@ class Ui_MainWindow(object):
         except Exception as error:
             print(error)
 
-    def file_preprocessing(self, account_lines) -> None:
+    def file_preprocessing(self, account_lines, account_pos: list) -> None:
         accounts_arr = []
         for index, account_line in enumerate(account_lines):
 
 
 
             account_values = account_line.split('|')
-            account_obj = {
-                "uid": account_values[0], 
-                "password": account_values[1],
-                "fa_secret": account_values[2],
-                "cookie": account_values[5],
-                "token": account_values[6],
-                "email": account_values[3],
-                "email_password": account_values[4],
-                "proxy": '',
-                "status": ''
-                }
+
+            account_obj = {}
+            for item in account_pos:
+                account_obj[item[1]] = account_values[item[0]]
+
+            # account_obj = {
+            #     "uid": account_values[0], 
+            #     "password": account_values[1],
+            #     "fa_secret": account_values[2],
+            #     "cookie": account_values[5],
+            #     "token": account_values[6],
+            #     "email": account_values[3],
+            #     "email_password": account_values[4],
+            #     "proxy": '',
+            #     "status": ''
+            #     }
             
             accounts_arr.append(account_obj)
 
@@ -962,16 +988,95 @@ class Ui_MainWindow(object):
 
         # Create a text edit box
         text_edit = QTextEdit(self.dialog)
-        text_edit.setGeometry(10, 10, 900, 360)
+        # text_edit.setGeometry(10, 10, 900, 360)
+
+        temp_columns = ["","uid", "password", "fa_secret", "cookie", "token", "email", "email_password"]
+
+        self.comboBoxA = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxA.setObjectName("comboBoxA")
+        self.comboBoxA.addItems(temp_columns)
+
+
+        self.comboBoxB = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxB.setObjectName("comboBoxB")
+        self.comboBoxB.addItems(temp_columns)
+
+        self.comboBoxC = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxC.setObjectName("comboBoxC")
+        self.comboBoxC.addItems(temp_columns)
+
+        self.comboBoxD = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxD.setObjectName("comboBoxD")
+        self.comboBoxD.addItems(temp_columns)
+
+        self.comboBoxE = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxE.setObjectName("comboBoxE")
+        self.comboBoxE.addItems(temp_columns)
+
+        self.comboBoxF = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxF.setObjectName("comboBoxF")
+        self.comboBoxF.addItems(temp_columns)
+
+        self.comboBoxG = QtWidgets.QComboBox(self.dialog)
+        self.comboBoxG.setObjectName("comboBoxG")
+        self.comboBoxG.addItems(temp_columns)
+
+        self.comboBoxGroup = [self.comboBoxA, self.comboBoxB, self.comboBoxC, self.comboBoxD, self.comboBoxE, self.comboBoxF, self.comboBoxG]
+
+
+
+        # The Temporary Table Widget
+        # self.tempTableWidget = QtWidgets.QTableWidget()
+        self.tempTableWidget.setGeometry(QtCore.QRect(180, 130, 411, 192))
+        self.tempTableWidget.setObjectName("tableWidget")
+        self.tempTableWidget.setColumnCount(7)
+        self.tempTableWidget.setRowCount(5)
+
+
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(1, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(2, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(3, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(4, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(5, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tempTableWidget.setHorizontalHeaderItem(6, item)
+
+        # _translate = QtCore.QCoreApplication.translate
+        # item = self.tempTableWidget.verticalHeaderItem(0)
+        # item.setText(_translate("MainWindow", "1"))
+        # item = self.tempTableWidget.verticalHeaderItem(1)
+        # item.setText(_translate("MainWindow", "2"))
+
+        column_widths = [136, 136, 136, 136, 136, 136, 136]
+        for i, width in enumerate(column_widths):
+            self.tempTableWidget.setColumnWidth(i, width)
+
+        # Caught the text-change's event on text_edit
+        text_edit.textChanged.connect(lambda: self.onAccountsTextChanged(text_edit.toPlainText()))
 
         # Add Save button to close the dialog
         save_button = QPushButton('Lưu', self.dialog)
         save_button.clicked.connect(lambda: self.onSaveAddAccountsClicked(text_edit.toPlainText()))
 
         # Set up the layout
-        dialog_layout = QVBoxLayout()
-        dialog_layout.addWidget(text_edit)
-        dialog_layout.addWidget(save_button)
+        dialog_layout = QGridLayout()
+        dialog_layout.addWidget(text_edit, 0, 0, 1, 7)
+        dialog_layout.addWidget(self.comboBoxA, 1, 0)
+        dialog_layout.addWidget(self.comboBoxB, 1, 1)
+        dialog_layout.addWidget(self.comboBoxC, 1, 2)
+        dialog_layout.addWidget(self.comboBoxD, 1, 3)
+        dialog_layout.addWidget(self.comboBoxE, 1, 4)
+        dialog_layout.addWidget(self.comboBoxF, 1, 5)
+        dialog_layout.addWidget(self.comboBoxG, 1, 6)
+        dialog_layout.addWidget(self.tempTableWidget, 2, 0, 1, 7)
+        dialog_layout.addWidget(save_button, 3, 0, 1, 2)
 
         self.dialog.setLayout(dialog_layout)
 
@@ -979,14 +1084,20 @@ class Ui_MainWindow(object):
         self.dialog.exec_()
 
     def onSaveAddAccountsClicked(self, text):
-        account_lines = text.splitlines()
-
-        self.file_preprocessing(account_lines) #add more account to self.accounts by "key-value pairs"
-
         current_category = self.category.currentText()
+
+        account_lines = text.splitlines()
+        account_pos = []
+        for index, combo_box in enumerate(self.comboBoxGroup):
+            account_pos.append((index, combo_box.currentText()))
+        
+        self.file_preprocessing(account_lines, account_pos) #add more account to self.accounts by "key-value pairs"
+
 
         # Add data to the data table
         self.add_accounts_to_table(self.accounts[current_category])
+
+        
         
         self.dialog.close()
 
@@ -1101,7 +1212,18 @@ class Ui_MainWindow(object):
 
     def load_data(self):
         print("Data loaded...")
-        
+    
+    def onAccountsTextChanged(self, text):
+
+        account_lines = text.splitlines()
+        processed_accounts = []
+        for line in account_lines:
+            splitted_line = line.split('|')
+            processed_accounts.append(splitted_line)
+
+        if len(processed_accounts) > 0:
+            self.add_accounts_to_temp_table(processed_accounts)
+
 
 if __name__ == "__main__":
     import sys
