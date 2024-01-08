@@ -400,8 +400,8 @@ class Ui_MainWindow(object):
         self.widget.hide()
 
         # NEW
-        # Load data when start project
-        self.load_data()
+        # Load defaut data when startup
+        self.load_default_data()
 
     def open_dialog(self):
         dialog = QDialog()
@@ -686,13 +686,13 @@ class Ui_MainWindow(object):
 
 
     def add_row(self, row_index, data):
-        current_category = self.category.currentText()
-
         _translate = QtCore.QCoreApplication.translate
         for column_index, key in enumerate(self.column_order):
 
             value = data.get(key, "")
-
+            category = data["category"]
+            uid = data["uid"]
+            
             if key == "uid":
                 profile_id = value
 
@@ -710,10 +710,9 @@ class Ui_MainWindow(object):
 
                     self.tableWidget.setCellWidget(row_index, column_index, item)
 
-                    self.accounts[current_category][row_index]['profile_status'] = True
+                    self.accounts[category][uid]['profile_status'] = True
                 else:
-                    self.accounts[current_category][row_index]['profile_status'] = False
-                    pass
+                    self.accounts[category][uid]['profile_status'] = False
             else:
                 item = QtWidgets.QTableWidgetItem()
                 item.setText(_translate("MainWindow", str(value)))
@@ -723,7 +722,7 @@ class Ui_MainWindow(object):
             
 
 
-    def add_accounts_to_table(self, accounts):
+    def add_accounts_to_table(self, accounts: dict):
         
         
         self.tableWidget.setRowCount(len(accounts))
@@ -732,8 +731,10 @@ class Ui_MainWindow(object):
         # Positions of field columns in the data table
         # column_order = ["tds_username", "tds_pass", "face_uid", "face_pass", "cookie", "token", "proxy", "user_agent", "tds_coins",  "status",  "action"]
 
-        for row_index, account_data in enumerate(accounts):
+        for row_index, account_data in enumerate(accounts.values()):
             self.add_row(row_index, account_data)
+
+
         self.tableWidget.setSortingEnabled(__sortingEnabled)
 
         password_delegate = PasswordDelegate()
@@ -755,10 +756,6 @@ class Ui_MainWindow(object):
         print('Added accounts to the temporary table!')
 
     def add_row_to_temp_table(self, row_index, data):
-
-        print('-----------------------')
-        print(data)
-        
         for column_index, cell in enumerate(data):
             item = QtWidgets.QTableWidgetItem(cell)
             self.tempTableWidget.setItem(row_index, column_index, item)
@@ -818,7 +815,10 @@ class Ui_MainWindow(object):
             print(error)
 
     def file_preprocessing(self, account_lines, account_pos: list) -> None:
+        current_category = self.category.currentText()
         accounts_arr = []
+        accounts_obj = {}
+        account_wrapper_obj = {}
         for index, account_line in enumerate(account_lines):
 
 
@@ -828,6 +828,9 @@ class Ui_MainWindow(object):
             account_obj = {}
             for item in account_pos:
                 account_obj[item[1]] = account_values[item[0]]
+
+            account_obj['category'] = current_category
+            
 
             # account_obj = {
             #     "uid": account_values[0], 
@@ -841,11 +844,11 @@ class Ui_MainWindow(object):
             #     "status": ''
             #     }
             
-            accounts_arr.append(account_obj)
+            # accounts_arr.append(account_obj)
+            accounts_obj[account_obj["uid"]] = account_obj
 
-        
-        current_category = self.category.currentText()
-        self.accounts[current_category] = accounts_arr
+        # self.accounts[current_category] = accounts_arr
+        self.accounts[current_category] = accounts_obj
         return None
 
     def split_proxies(self, proxy_string:str)->dict:
@@ -1026,7 +1029,7 @@ class Ui_MainWindow(object):
 
 
         # The Temporary Table Widget
-        # self.tempTableWidget = QtWidgets.QTableWidget()
+        self.tempTableWidget = QtWidgets.QTableWidget()
         self.tempTableWidget.setGeometry(QtCore.QRect(180, 130, 411, 192))
         self.tempTableWidget.setObjectName("tableWidget")
         self.tempTableWidget.setColumnCount(7)
@@ -1066,19 +1069,19 @@ class Ui_MainWindow(object):
         save_button.clicked.connect(lambda: self.onSaveAddAccountsClicked(text_edit.toPlainText()))
 
         # Set up the layout
-        dialog_layout = QGridLayout()
-        dialog_layout.addWidget(text_edit, 0, 0, 1, 7)
-        dialog_layout.addWidget(self.comboBoxA, 1, 0)
-        dialog_layout.addWidget(self.comboBoxB, 1, 1)
-        dialog_layout.addWidget(self.comboBoxC, 1, 2)
-        dialog_layout.addWidget(self.comboBoxD, 1, 3)
-        dialog_layout.addWidget(self.comboBoxE, 1, 4)
-        dialog_layout.addWidget(self.comboBoxF, 1, 5)
-        dialog_layout.addWidget(self.comboBoxG, 1, 6)
-        dialog_layout.addWidget(self.tempTableWidget, 2, 0, 1, 7)
-        dialog_layout.addWidget(save_button, 3, 0, 1, 2)
+        self.dialog_layout = QGridLayout()
+        self.dialog_layout.addWidget(text_edit, 0, 0, 1, 7)
+        self.dialog_layout.addWidget(self.comboBoxA, 1, 0)
+        self.dialog_layout.addWidget(self.comboBoxB, 1, 1)
+        self.dialog_layout.addWidget(self.comboBoxC, 1, 2)
+        self.dialog_layout.addWidget(self.comboBoxD, 1, 3)
+        self.dialog_layout.addWidget(self.comboBoxE, 1, 4)
+        self.dialog_layout.addWidget(self.comboBoxF, 1, 5)
+        self.dialog_layout.addWidget(self.comboBoxG, 1, 6)
+        self.dialog_layout.addWidget(self.tempTableWidget, 2, 0, 1, 7)
+        self.dialog_layout.addWidget(save_button, 3, 0, 1, 2)
 
-        self.dialog.setLayout(dialog_layout)
+        self.dialog.setLayout(self.dialog_layout)
 
         # Show the dialog
         self.dialog.exec_()
@@ -1087,19 +1090,41 @@ class Ui_MainWindow(object):
         current_category = self.category.currentText()
 
         account_lines = text.splitlines()
+
+        # account_pos used for get columns position from temporary table
         account_pos = []
         for index, combo_box in enumerate(self.comboBoxGroup):
             account_pos.append((index, combo_box.currentText()))
+
+        exist_uid = False
+        for item in account_pos:
+            if item[1] == 'uid':
+                exist_uid = True
+    
+        if not exist_uid:
+            return self.show_error_dialog(err_msg="Phải chọn ít nhất 1 cột có UID!")
         
         self.file_preprocessing(account_lines, account_pos) #add more account to self.accounts by "key-value pairs"
-
 
         # Add data to the data table
         self.add_accounts_to_table(self.accounts[current_category])
 
-        
-        
+        # Automate save deufalt json file
+        self.saveJsonFile(self.accounts)
+
         self.dialog.close()
+
+    def saveJsonFile(self, json_data):
+        file_path = "./defaults/data.json"
+        try:
+            # Write the JSON data to the selected file
+            json_object = json.dumps(json_data, indent=4)
+            with open(file_path, 'w') as file:
+                file.write(json_object)
+
+            print(f'Successfully saved JSON file: {file_path}')
+        except Exception as e:
+            print(f'Error saving JSON file: {e}')
 
     def show_add_proxies_dialog(self):
         if self.tableWidget.rowCount() == 0:
@@ -1182,7 +1207,7 @@ class Ui_MainWindow(object):
             self.category.addItem(category_input_text)
 
             # add new category as a key to self.accounts: dict
-            self.accounts[category_input_text] = []
+            self.accounts[category_input_text] = {}
 
             self.category.setCurrentText(category_input_text)
 
@@ -1208,11 +1233,35 @@ class Ui_MainWindow(object):
             self.category.removeItem(current_index)
 
     def update_table(self, category):
-        self.add_accounts_to_table(self.accounts[category])
+        if category == "All category":
+            all_data = {}
+            for account_obj in self.accounts.values():
+                all_data.update(account_obj)
 
-    def load_data(self):
-        print("Data loaded...")
+            # Show all accounts
+            self.add_accounts_to_table(all_data)
+        else:
+            # show accounts by category that them belong
+            self.add_accounts_to_table(self.accounts[category])
+
+
+    def load_default_data(self):
+        print('Loaded default data!')
+        # Load and display the contents of the JSON file
+        file_path = "./defaults/data.json"
+        try:
+            with open(file_path, 'r') as file:
+                data = file.read()
+                json_data = json.loads(data)
+            
+                if 'All category' in json_data:
+                    print("json_data['All']=", json_data['All category'])
+
+        except Exception as e:
+            print(f"Error loading JSON file: {e}")
+
     
+
     def onAccountsTextChanged(self, text):
 
         account_lines = text.splitlines()
